@@ -1,0 +1,315 @@
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../core/config/app_config.dart';
+import '../../core/mock/demo_game_data.dart';
+import '../../core/network/lan_discovery_service.dart';
+import '../../core/network/local_game_server.dart';
+import '../../core/network/socket_service.dart';
+import '../../models/game_room.dart';
+import '../../models/game_state.dart';
+import '../../models/player.dart';
+import 'player_provider.dart';
+
+final roomsProvider =
+    StateNotifierProvider<RoomsNotifier, List<GameRoom>>((ref) {
+  return RoomsNotifier();
+});
+
+class RoomsNotifier extends StateNotifier<List<GameRoom>> {
+  RoomsNotifier() : super([]) {
+    _initSocket();
+    _initLanDiscovery();
+  }
+
+  List<GameRoom> _localDemoRooms = [];
+  List<GameRoom> _lanDiscoveredRooms = [];
+
+  void _initSocket() {
+    if (AppConfig.isDemoMode) return;
+
+    final socket = SocketService();
+    socket.on('rooms_updated', (data) {
+      if (data is List) {
+        final list = data
+            .whereType<Map>()
+            .map((r) => GameRoom.fromJson(Map<String, dynamic>.from(r)))
+            .toList();
+        _mergeAndEmit(serverRooms: list);
+      }
+    });
+  }
+
+  void _initLanDiscovery() {
+    if (AppConfig.isDemoMode) return;
+
+    LanDiscoveryService().startDiscovery(
+      onUpdate: (discoveredRooms) {
+        _lanDiscoveredRooms = discoveredRooms;
+        _mergeAndEmit();
+      },
+    );
+  }
+
+  void _mergeAndEmit({List<GameRoom>? serverRooms}) {
+    final merged = <String, GameRoom>{};
+
+    // Add LAN discovered rooms first
+    for (final room in _lanDiscoveredRooms) {
+      merged[room.id] = room;
+    }
+
+    // Add server rooms if any
+    if (serverRooms != null) {
+      for (final room in serverRooms) {
+        merged[room.id] = room;
+      }
+    }
+
+    state = merged.values.toList();
+  }
+
+  void fetchRooms() {
+    if (AppConfig.isDemoMode) {
+      if (_localDemoRooms.isEmpty) {
+        _localDemoRooms = getInitialDemoRooms();
+      }
+      state = List.from(_localDemoRooms);
+      return;
+    }
+
+    // Merge currently discovered LAN rooms
+    _mergeAndEmit();
+    SocketService().emit('get_rooms');
+  }
+
+  void addDemoRoom(GameRoom room) {
+    if (_localDemoRooms.isEmpty) {
+      _localDemoRooms = getInitialDemoRooms();
+    }
+    _localDemoRooms = [room, ..._localDemoRooms];
+    state = List.from(_localDemoRooms);
+  }
+
+  @override
+  void dispose() {
+    LanDiscoveryService().stopDiscovery();
+    super.dispose();
+  }
+}
+
+final currentRoomProvider =
+    StateNotifierProvider<CurrentRoomNotifier, GameRoom?>((ref) {
+  return CurrentRoomNotifier(ref);
+});
+
+class CurrentRoomNotifier extends StateNotifier<GameRoom?> {
+  final Ref _ref;
+  bool _isHostingLocally = false;
+  bool get isHostingLocally => _isHostingLocally;
+
+  CurrentRoomNotifier(this._ref) : super(null) {
+    _initSocket();
+  }
+
+  void _initSocket() {
+    if (AppConfig.isDemoMode) return;
+
+    final socket = SocketService();
+
+    socket.on('room_created', (data) {
+      if (data is Map) {
+        state = GameRoom.fromJson(Map<String, dynamic>.from(data));
+      }
+    });
+
+    socket.on('room_joined', (data) {
+      if (data is Map) {
+        state = GameRoom.fromJson(Map<String, dynamic>.from(data));
+      }
+    });
+
+    socket.on('room_updated', (data) {
+      if (data is Map) {
+        state = GameRoom.fromJson(Map<String, dynamic>.from(data));
+      }
+    });
+  }
+
+  Future<void> createRoom(String roomName, int maxPlayers) async {
+    final playerName = _ref.read(playerNameProvider);
+
+    if (AppConfig.isDemoMode) {
+      final user = Player(
+        id: 'demo_player_local',
+        name: playerName.isNotEmpty ? playerName : 'Player',
+        isHost: true,
+      );
+      final bot = Player(
+        id: 'bot_merlin',
+        name: 'Merlin',
+        isHost: false,
+      );
+
+      final newRoom = GameRoom(
+        id: 'demo_room_${DateTime.now().millisecondsSinceEpoch % 10000}',
+        name: roomName,
+        hostId: user.id,
+        maxPlayers: maxPlayers,
+        playerCount: 2,
+        status: 'WAITING',
+        players: [user, bot],
+      );
+
+      _ref.read(roomsProvider.notifier).addDemoRoom(newRoom);
+      state = newRoom;
+      return;
+    }
+
+    // Host on Local Wi-Fi using embedded Dart server!
+    try {
+      final server = LocalGameServer();
+      final port = await server.startServer(
+        roomName: roomName,
+        hostPlayerName: playerName,
+        maxPlayers: maxPlayers,
+      );
+
+      _isHostingLocally = true;
+
+      // Connect Host client to local server
+      await SocketService().connect(serverUrl: 'ws://127.0.0.1:$port');
+      SocketService().emit('join_room', {
+        'roomId': server.room?.id,
+        'playerName': playerName,
+      });
+
+      state = server.room;
+    } catch (e) {
+      // Fallback: emit on existing socket if available
+      SocketService().emit('create_room', {
+        'roomName': roomName,
+        'maxPlayers': maxPlayers,
+      });
+    }
+  }
+
+  Future<void> joinRoom(String roomId, {String? hostAddress}) async {
+    final playerName = _ref.read(playerNameProvider);
+
+    if (AppConfig.isDemoMode) {
+      final allRooms = _ref.read(roomsProvider);
+      GameRoom target = allRooms.firstWhere(
+        (r) => r.id == roomId,
+        orElse: () => getInitialDemoRooms().first,
+      );
+
+      final user = Player(
+        id: 'demo_player_local',
+        name: playerName.isNotEmpty ? playerName : 'Player',
+        isHost: false,
+      );
+
+      final updatedPlayers = [
+        ...target.players.where((p) => p.id != user.id),
+        user,
+      ];
+
+      final updatedRoom = target.copyWith(
+        players: updatedPlayers,
+        playerCount: updatedPlayers.length,
+      );
+
+      state = updatedRoom;
+      return;
+    }
+
+    // Check if room has a host address on Wi-Fi (e.g. 192.168.1.15:8080)
+    final allRooms = _ref.read(roomsProvider);
+    final targetRoom = allRooms.cast<GameRoom?>().firstWhere(
+          (r) => r?.id == roomId,
+          orElse: () => null,
+        );
+
+    final targetAddress = hostAddress ?? targetRoom?.hostAddress;
+    if (targetAddress != null && targetAddress.isNotEmpty) {
+      await SocketService().connect(serverUrl: 'ws://$targetAddress');
+    }
+
+    SocketService().emit('join_room', {
+      'roomId': roomId,
+      'playerName': playerName,
+    });
+  }
+
+  Future<void> connectByIp(String ipAndPort) async {
+    final clean = ipAndPort.trim();
+    final address = clean.contains(':') ? clean : '$clean:8080';
+    await SocketService().connect(serverUrl: 'ws://$address');
+
+    final playerName = _ref.read(playerNameProvider);
+    SocketService().emit('join_room', {
+      'roomId': 'local_room',
+      'playerName': playerName,
+    });
+  }
+
+  void leaveRoom() {
+    if (_isHostingLocally) {
+      LocalGameServer().stopServer();
+      _isHostingLocally = false;
+    }
+
+    if (AppConfig.isDemoMode) {
+      state = null;
+      return;
+    }
+
+    SocketService().emit('leave_room');
+    SocketService().disconnect();
+    state = null;
+  }
+
+  void startGame() {
+    if (AppConfig.isDemoMode) {
+      if (state == null) return;
+
+      final deck = generateDemoDeck();
+      final currentPlayers = state!.players;
+      final updatedPlayers = <Player>[];
+
+      for (int i = 0; i < currentPlayers.length; i++) {
+        final hand = deck.sublist(i * 5, (i + 1) * 5);
+        updatedPlayers.add(
+          currentPlayers[i].copyWith(
+            hand: hand,
+            score: 0,
+          ),
+        );
+      }
+
+      final startedRoom = state!.copyWith(
+        status: 'PLAYING',
+        players: updatedPlayers,
+        gameState: GameStateModel(
+          currentTurnIndex: 0,
+          playedCards: [],
+        ),
+      );
+
+      state = startedRoom;
+      return;
+    }
+
+    SocketService().emit('start_game');
+  }
+
+  void updateDemoGameState({
+    required List<Player> players,
+    required GameStateModel gameState,
+  }) {
+    if (state == null) return;
+    state = state!.copyWith(
+      players: players,
+      gameState: gameState,
+    );
+  }
+}
