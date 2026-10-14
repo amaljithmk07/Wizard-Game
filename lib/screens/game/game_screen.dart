@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/config/app_config.dart';
 import '../../core/network/socket_service.dart';
-import '../../models/game_state.dart';
 import '../../providers/game_provider.dart';
 import '../../providers/room_provider.dart';
 import '../../widgets/game_card_widget.dart';
@@ -135,13 +134,18 @@ class _GameScreenState extends ConsumerState<GameScreen> {
 
     // Find opponents
     final opponents = room.players.where((p) => p.id != socketId).toList();
-    final opponent = opponents.isNotEmpty ? opponents.first : null;
+    final singleOpponent = opponents.isNotEmpty ? opponents.first : null;
 
-    // Find played card on table
-    PlayedCardItem? tableCardItem;
-    if (room.gameState != null && room.gameState!.playedCards.isNotEmpty) {
-      tableCardItem = room.gameState!.playedCards.last;
-    }
+    // Find current turn player
+    final currentTurnPlayer = (room.gameState != null &&
+            room.gameState!.currentTurnIndex < room.players.length)
+        ? room.players[room.gameState!.currentTurnIndex]
+        : null;
+    final bool isSingleOpponentTurn =
+        singleOpponent != null && currentTurnPlayer?.id == singleOpponent.id;
+
+    // Find all played cards on table in current trick
+    final playedCards = room.gameState?.playedCards ?? [];
 
     final bool isMyTurn = gameState.isMyTurn;
 
@@ -210,27 +214,34 @@ class _GameScreenState extends ConsumerState<GameScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            const SizedBox(height: 12),
+            const SizedBox(height: 8),
 
-            // Top Opponent Area
-            if (opponent != null) ...[
+            // Top Opponent Area (Adaptive for 1 opponent or up to 7 opponents)
+            if (opponents.length == 1 && singleOpponent != null) ...[
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Container(
                     width: 32,
                     height: 32,
-                    decoration: const BoxDecoration(
+                    decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      color: Color(0xFFE2E8F0),
+                      color: isSingleOpponentTurn
+                          ? const Color(0xFFEFF6FF)
+                          : const Color(0xFFE2E8F0),
+                      border: isSingleOpponentTurn
+                          ? Border.all(color: const Color(0xFF2563EB), width: 2)
+                          : null,
                     ),
                     alignment: Alignment.center,
                     child: Text(
-                      opponent.name.isNotEmpty
-                          ? opponent.name[0].toUpperCase()
+                      singleOpponent.name.isNotEmpty
+                          ? singleOpponent.name[0].toUpperCase()
                           : 'O',
-                      style: const TextStyle(
-                        color: Color(0xFF334155),
+                      style: TextStyle(
+                        color: isSingleOpponentTurn
+                            ? const Color(0xFF2563EB)
+                            : const Color(0xFF334155),
                         fontWeight: FontWeight.w700,
                         fontSize: 14,
                       ),
@@ -240,16 +251,39 @@ class _GameScreenState extends ConsumerState<GameScreen> {
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        opponent.name,
-                        style: const TextStyle(
-                          color: Color(0xFF0F172A),
-                          fontSize: 14,
-                          fontWeight: FontWeight.w700,
-                        ),
+                      Row(
+                        children: [
+                          Text(
+                            singleOpponent.name,
+                            style: const TextStyle(
+                              color: Color(0xFF0F172A),
+                              fontSize: 14,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          if (isSingleOpponentTurn) ...[
+                            const SizedBox(width: 6),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFEFF6FF),
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: const Text(
+                                'TURN',
+                                style: TextStyle(
+                                  color: Color(0xFF2563EB),
+                                  fontSize: 9,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ],
                       ),
                       Text(
-                        '${opponent.hand.isNotEmpty ? opponent.hand.length : 3} cards',
+                        '${singleOpponent.hand.isNotEmpty ? singleOpponent.hand.length : 3} cards • Score: ${singleOpponent.score}',
                         style: const TextStyle(
                           color: Color(0xFF64748B),
                           fontSize: 12,
@@ -259,61 +293,213 @@ class _GameScreenState extends ConsumerState<GameScreen> {
                   ),
                 ],
               ),
-              const SizedBox(height: 10),
+              const SizedBox(height: 8),
 
               // Opponent's Face-Down Cards
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: List.generate(
-                  opponent.hand.isNotEmpty ? opponent.hand.length : 3,
+                  singleOpponent.hand.isNotEmpty
+                      ? singleOpponent.hand.length
+                      : 3,
                   (index) => const Padding(
                     padding: EdgeInsets.symmetric(horizontal: 4),
                     child: GameCardWidget(
                       isFaceDown: true,
-                      width: 48,
-                      height: 68,
+                      width: 44,
+                      height: 64,
                     ),
                   ),
                 ),
               ),
-            ],
-
-            // Center Game Table
-            Expanded(
-              child: Container(
-                margin:
-                    const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF1F5F9).withValues(alpha: 0.6),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Center(
-                  child: tableCardItem != null
-                      ? Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            GameCardWidget(
-                              card: tableCardItem.card,
-                              width: 80,
-                              height: 116,
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              'Played by ${tableCardItem.playerName}',
-                              style: const TextStyle(
-                                color: Color(0xFF64748B),
-                                fontSize: 12,
-                                fontWeight: FontWeight.w500,
+            ] else if (opponents.length > 1) ...[
+              // Scrollable Opponents Row for 3-8 players
+              SizedBox(
+                height: 80,
+                child: ListView.separated(
+                  scrollDirection: Axis.horizontal,
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  itemCount: opponents.length,
+                  separatorBuilder: (_, __) => const SizedBox(width: 10),
+                  itemBuilder: (context, index) {
+                    final opp = opponents[index];
+                    final bool isTurn = currentTurnPlayer?.id == opp.id;
+                    return Container(
+                      width: 110,
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: isTurn ? const Color(0xFFEFF6FF) : Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: isTurn
+                              ? const Color(0xFF2563EB)
+                              : const Color(0xFFE2E8F0),
+                          width: isTurn ? 2 : 1,
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.03),
+                            blurRadius: 4,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Row(
+                            children: [
+                              Container(
+                                width: 24,
+                                height: 24,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: isTurn
+                                      ? const Color(0xFF2563EB)
+                                      : const Color(0xFFE2E8F0),
+                                ),
+                                alignment: Alignment.center,
+                                child: Text(
+                                  opp.name.isNotEmpty
+                                      ? opp.name[0].toUpperCase()
+                                      : 'P',
+                                  style: TextStyle(
+                                    color: isTurn
+                                        ? Colors.white
+                                        : const Color(0xFF334155),
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                              Expanded(
+                                child: Text(
+                                  opp.name,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    color: const Color(0xFF0F172A),
+                                    fontSize: 12,
+                                    fontWeight: isTurn
+                                        ? FontWeight.w800
+                                        : FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 6),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                '${opp.hand.length} cards',
+                                style: const TextStyle(
+                                  color: Color(0xFF64748B),
+                                  fontSize: 11,
+                                ),
+                              ),
+                              Text(
+                                '${opp.score} pts',
+                                style: const TextStyle(
+                                  color: Color(0xFF2563EB),
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ],
+                          ),
+                          if (isTurn) ...[
+                            const SizedBox(height: 2),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 6, vertical: 1),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF2563EB),
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: const Text(
+                                'TURN',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 8,
+                                  fontWeight: FontWeight.w800,
+                                ),
                               ),
                             ),
                           ],
+                        ],
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
+
+            // Center Game Table (Displays cards played in current trick)
+            Expanded(
+              child: Container(
+                margin:
+                    const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF1F5F9).withValues(alpha: 0.6),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: const Color(0xFFE2E8F0)),
+                ),
+                child: Center(
+                  child: playedCards.isNotEmpty
+                      ? SingleChildScrollView(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 16, vertical: 12),
+                          child: Wrap(
+                            alignment: WrapAlignment.center,
+                            spacing: 12,
+                            runSpacing: 12,
+                            children: playedCards.map((item) {
+                              return Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  GameCardWidget(
+                                    card: item.card,
+                                    width: playedCards.length > 4 ? 54 : 64,
+                                    height: playedCards.length > 4 ? 78 : 92,
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Container(
+                                    constraints:
+                                        const BoxConstraints(maxWidth: 70),
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 6, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color: Colors.white,
+                                      borderRadius: BorderRadius.circular(6),
+                                      border: Border.all(
+                                          color: const Color(0xFFE2E8F0)),
+                                    ),
+                                    child: Text(
+                                      item.playerName,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      textAlign: TextAlign.center,
+                                      style: const TextStyle(
+                                        color: Color(0xFF334155),
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              );
+                            }).toList(),
+                          ),
                         )
                       : const Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             Icon(
                               Icons.style_outlined,
-                              size: 40,
+                              size: 38,
                               color: Color(0xFFCBD5E1),
                             ),
                             SizedBox(height: 8),

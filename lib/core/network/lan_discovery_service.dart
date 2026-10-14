@@ -19,7 +19,8 @@ class LanDiscoveryService {
 
   bool get isListening => _socket != null;
 
-  Future<void> startDiscovery({required Function(List<GameRoom>) onUpdate}) async {
+  Future<void> startDiscovery(
+      {required Function(List<GameRoom>) onUpdate}) async {
     onRoomsUpdated = onUpdate;
     if (_socket != null) return;
 

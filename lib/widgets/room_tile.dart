@@ -30,17 +30,53 @@ class RoomTile extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  room.name,
-                  style: const TextStyle(
-                    color: Color(0xFF0F172A),
-                    fontSize: 15,
-                    fontWeight: FontWeight.w700,
-                  ),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        room.name,
+                        style: const TextStyle(
+                          color: Color(0xFF0F172A),
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                    if (room.isLocalLan) ...[
+                      const SizedBox(width: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFEFF6FF),
+                          borderRadius: BorderRadius.circular(4),
+                          border: Border.all(color: const Color(0xFFBFDBFE)),
+                        ),
+                        child: const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.wifi,
+                                size: 11, color: Color(0xFF2563EB)),
+                            SizedBox(width: 3),
+                            Text(
+                              'Wi-Fi',
+                              style: TextStyle(
+                                color: Color(0xFF1D4ED8),
+                                fontSize: 10,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ],
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  '${room.playerCount} / ${room.maxPlayers} players',
+                  room.isLocalLan
+                      ? '${room.playerCount} / ${room.maxPlayers} players • ${room.hostAddress}'
+                      : '${room.playerCount} / ${room.maxPlayers} players',
                   style: const TextStyle(
                     color: Color(0xFF64748B),
                     fontSize: 13,

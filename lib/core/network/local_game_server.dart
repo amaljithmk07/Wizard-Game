@@ -76,10 +76,12 @@ class LocalGameServer {
     }
 
     if (_server == null) {
-      throw Exception('Failed to bind embedded local server on ports $preferredPort-${tryPort - 1}');
+      throw Exception(
+          'Failed to bind embedded local server on ports $preferredPort-${tryPort - 1}');
     }
 
-    final roomId = 'local_room_${DateTime.now().millisecondsSinceEpoch % 10000}';
+    final roomId =
+        'local_room_${DateTime.now().millisecondsSinceEpoch % 10000}';
     final hostPlayer = Player(
       id: 'player_host',
       name: hostPlayerName.isNotEmpty ? hostPlayerName : 'Host',
@@ -161,9 +163,11 @@ class LocalGameServer {
       case 'set_player_name':
         final name = payload['name']?.toString().trim();
         if (name != null && name.isNotEmpty) {
-          final playerIndex = _room!.players.indexWhere((p) => p.id == clientId);
+          final playerIndex =
+              _room!.players.indexWhere((p) => p.id == clientId);
           if (playerIndex != -1) {
-            _room!.players[playerIndex] = _room!.players[playerIndex].copyWith(name: name);
+            _room!.players[playerIndex] =
+                _room!.players[playerIndex].copyWith(name: name);
             _broadcastRoomUpdated();
           }
         }
@@ -253,10 +257,13 @@ class LocalGameServer {
         }
 
         final playedCard = currentTurnPlayer.hand[cardIndex];
-        final updatedHand = List<GameCard>.from(currentTurnPlayer.hand)..removeAt(cardIndex);
+        final updatedHand = List<GameCard>.from(currentTurnPlayer.hand)
+          ..removeAt(cardIndex);
 
-        final playerIdxInList = _room!.players.indexWhere((p) => p.id == clientId);
-        _room!.players[playerIdxInList] = currentTurnPlayer.copyWith(hand: updatedHand);
+        final playerIdxInList =
+            _room!.players.indexWhere((p) => p.id == clientId);
+        _room!.players[playerIdxInList] =
+            currentTurnPlayer.copyWith(hand: updatedHand);
 
         final playedItem = PlayedCardItem(
           playerId: currentTurnPlayer.id,
@@ -264,7 +271,10 @@ class LocalGameServer {
           card: playedCard,
         );
 
-        final updatedPlayedCards = [..._room!.gameState!.playedCards, playedItem];
+        final updatedPlayedCards = [
+          ..._room!.gameState!.playedCards,
+          playedItem
+        ];
 
         // Did everyone in the room play their card for this trick?
         if (updatedPlayedCards.length >= _room!.players.length) {
@@ -277,7 +287,8 @@ class LocalGameServer {
           }
 
           // Award 10 points to winner
-          final winnerIdx = _room!.players.indexWhere((p) => p.id == highest.playerId);
+          final winnerIdx =
+              _room!.players.indexWhere((p) => p.id == highest.playerId);
           if (winnerIdx != -1) {
             final w = _room!.players[winnerIdx];
             _room!.players[winnerIdx] = w.copyWith(score: w.score + 10);
@@ -313,13 +324,15 @@ class LocalGameServer {
                 ),
               );
 
-              final resultScores = _room!.players.map((p) => {
-                'id': p.id,
-                'name': p.name,
-                'score': p.score,
-                'isHost': p.isHost,
-                'hand': [],
-              }).toList();
+              final resultScores = _room!.players
+                  .map((p) => {
+                        'id': p.id,
+                        'name': p.name,
+                        'score': p.score,
+                        'isHost': p.isHost,
+                        'hand': [],
+                      })
+                  .toList();
 
               _broadcast('game_finished', {
                 'winner': topPlayer.name,
@@ -403,23 +416,27 @@ class LocalGameServer {
       'playerCount': _room!.players.length,
       'status': _room!.status,
       'hostAddress': _room!.hostAddress,
-      'players': _room!.players.map((p) => {
-        'id': p.id,
-        'name': p.name,
-        'score': p.score,
-        'isHost': p.isHost,
-        'hand': p.hand.map((c) => c.toJson()).toList(),
-      }).toList(),
+      'players': _room!.players
+          .map((p) => {
+                'id': p.id,
+                'name': p.name,
+                'score': p.score,
+                'isHost': p.isHost,
+                'hand': p.hand.map((c) => c.toJson()).toList(),
+              })
+          .toList(),
       'gameState': _room!.gameState == null
           ? null
           : {
               'currentTurnIndex': _room!.gameState!.currentTurnIndex,
               'winner': _room!.gameState!.winner,
-              'playedCards': _room!.gameState!.playedCards.map((pc) => {
-                'playerId': pc.playerId,
-                'playerName': pc.playerName,
-                'card': pc.card.toJson(),
-              }).toList(),
+              'playedCards': _room!.gameState!.playedCards
+                  .map((pc) => {
+                        'playerId': pc.playerId,
+                        'playerName': pc.playerName,
+                        'card': pc.card.toJson(),
+                      })
+                  .toList(),
             },
     };
   }

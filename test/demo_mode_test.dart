@@ -12,6 +12,7 @@ import 'package:wizard_flutter/screens/name/name_screen.dart';
 import 'package:wizard_flutter/screens/server_list/server_list_screen.dart';
 import 'package:wizard_flutter/screens/lobby/room_lobby_screen.dart';
 import 'package:wizard_flutter/screens/result/game_result_screen.dart';
+import 'package:wizard_flutter/screens/create_room/create_room_screen.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -233,6 +234,41 @@ void main() {
       expect(find.text('DEMO MATCH RESULT'), findsOneWidget);
       expect(find.text('Champion'), findsOneWidget);
       expect(find.text('Back to Rooms'), findsOneWidget);
+    });
+
+    testWidgets(
+        'CreateRoomScreen renders player counts 2 to 8 and creates 8-player room',
+        (tester) async {
+      final container = ProviderContainer();
+      container.read(playerNameProvider.notifier).setName('HostPlayer');
+
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: const MaterialApp(home: CreateRoomScreen()),
+        ),
+      );
+
+      await tester.pumpAndSettle();
+
+      // Check player selectors from 2 to 8 exist
+      for (int i = 2; i <= 8; i++) {
+        expect(find.text('$i'), findsOneWidget);
+      }
+
+      // Tap on 8 players
+      await tester.tap(find.text('8'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('8 players'), findsOneWidget);
+
+      // Tap Create Room button
+      await tester.tap(find.widgetWithText(ElevatedButton, 'Create Room'));
+      await tester.pumpAndSettle();
+
+      final currentRoom = container.read(currentRoomProvider);
+      expect(currentRoom, isNotNull);
+      expect(currentRoom!.maxPlayers, 8);
     });
   });
 }

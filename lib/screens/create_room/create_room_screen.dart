@@ -127,48 +127,62 @@ class _CreateRoomScreenState extends ConsumerState<CreateRoomScreen> {
               const SizedBox(height: 24),
 
               // Maximum Players Selector
-              const Text(
-                'Maximum Players',
-                style: TextStyle(
-                  color: Color(0xFF334155),
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    'Maximum Players',
+                    style: TextStyle(
+                      color: Color(0xFF334155),
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  Text(
+                    '$_maxPlayers players',
+                    style: const TextStyle(
+                      color: Color(0xFF2563EB),
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
               ),
               const SizedBox(height: 12),
               Row(
-                children: [2, 3, 4].map((count) {
+                children: [2, 3, 4, 5, 6, 7, 8].map((count) {
                   final bool isSelected = _maxPlayers == count;
                   return Expanded(
-                    child: GestureDetector(
-                      onTap: () => setState(() => _maxPlayers = count),
-                      child: Container(
-                        height: 48,
-                        margin: EdgeInsets.only(
-                          right: count < 4 ? 12 : 0,
-                        ),
-                        decoration: BoxDecoration(
-                          color: isSelected
-                              ? const Color(0xFFEFF6FF)
-                              : Colors.white,
-                          borderRadius: BorderRadius.circular(10),
-                          border: Border.all(
+                    child: Padding(
+                      padding: EdgeInsets.only(right: count < 8 ? 6 : 0),
+                      child: GestureDetector(
+                        onTap: () => setState(() => _maxPlayers = count),
+                        child: Container(
+                          height: 44,
+                          decoration: BoxDecoration(
                             color: isSelected
-                                ? const Color(0xFF2563EB)
-                                : const Color(0xFFE2E8F0),
-                            width: isSelected ? 2 : 1,
+                                ? const Color(0xFFEFF6FF)
+                                : Colors.white,
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(
+                              color: isSelected
+                                  ? const Color(0xFF2563EB)
+                                  : const Color(0xFFE2E8F0),
+                              width: isSelected ? 2 : 1,
+                            ),
                           ),
-                        ),
-                        alignment: Alignment.center,
-                        child: Text(
-                          '$count',
-                          style: TextStyle(
-                            color: isSelected
-                                ? const Color(0xFF2563EB)
-                                : const Color(0xFF334155),
-                            fontSize: 16,
-                            fontWeight:
-                                isSelected ? FontWeight.w700 : FontWeight.w500,
+                          alignment: Alignment.center,
+                          child: Text(
+                            '$count',
+                            style: TextStyle(
+                              color: isSelected
+                                  ? const Color(0xFF2563EB)
+                                  : const Color(0xFF334155),
+                              fontSize: 15,
+                              fontWeight: isSelected
+                                  ? FontWeight.w700
+                                  : FontWeight.w600,
+                            ),
                           ),
                         ),
                       ),

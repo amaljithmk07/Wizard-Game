@@ -88,7 +88,7 @@ io.on('connection', (socket) => {
     const roomName = (data && data.roomName && data.roomName.trim()) 
       ? data.roomName.trim() 
       : `${playerName}'s Room`;
-    const maxPlayers = (data && data.maxPlayers >= 2 && data.maxPlayers <= 4) 
+    const maxPlayers = (data && data.maxPlayers >= 2 && data.maxPlayers <= 8) 
       ? data.maxPlayers 
       : 4;
 

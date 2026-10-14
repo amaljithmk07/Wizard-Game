@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/config/app_config.dart';
-import '../../core/network/socket_service.dart';
+import '../../core/network/local_game_server.dart';
 import '../../providers/room_provider.dart';
 import '../../widgets/room_tile.dart';
 import '../create_room/create_room_screen.dart';
@@ -15,12 +15,22 @@ class ServerListScreen extends ConsumerStatefulWidget {
 }
 
 class _ServerListScreenState extends ConsumerState<ServerListScreen> {
+  String? _myLocalIp;
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _loadRooms();
+      _fetchMyIp();
     });
+  }
+
+  void _fetchMyIp() async {
+    final ip = await LocalGameServer().findLocalIp();
+    if (mounted) {
+      setState(() => _myLocalIp = ip);
+    }
   }
 
   void _loadRooms() {
@@ -32,6 +42,58 @@ class _ServerListScreenState extends ConsumerState<ServerListScreen> {
     Navigator.push(
       context,
       MaterialPageRoute(builder: (_) => const RoomLobbyScreen()),
+    );
+  }
+
+  void _showJoinByIpDialog() {
+    final controller = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Connect by Host IP'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Enter the Host\'s Wi-Fi IP address shown on their screen:',
+              style: TextStyle(fontSize: 13, color: Color(0xFF64748B)),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: controller,
+              decoration: InputDecoration(
+                hintText: 'e.g. 192.168.1.15:8080',
+                border:
+                    OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                contentPadding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              ),
+              autofocus: true,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              final text = controller.text.trim();
+              if (text.isNotEmpty) {
+                Navigator.pop(ctx);
+                ref.read(currentRoomProvider.notifier).connectByIp(text);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const RoomLobbyScreen()),
+                );
+              }
+            },
+            child: const Text('Connect'),
+          ),
+        ],
+      ),
     );
   }
 
@@ -80,6 +142,32 @@ class _ServerListScreenState extends ConsumerState<ServerListScreen> {
                   ),
                 ),
               ),
+            ] else ...[
+              const SizedBox(width: 10),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFEFF6FF),
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(color: const Color(0xFFBFDBFE)),
+                ),
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.wifi, size: 12, color: Color(0xFF2563EB)),
+                    SizedBox(width: 4),
+                    Text(
+                      'LOCAL WI-FI',
+                      style: TextStyle(
+                        color: Color(0xFF1D4ED8),
+                        fontSize: 10,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ],
           ],
         ),
@@ -97,162 +185,133 @@ class _ServerListScreenState extends ConsumerState<ServerListScreen> {
           padding: const EdgeInsets.symmetric(horizontal: 20),
           child: Column(
             children: [
-              // Server Mode Connection Error Banner
-              if (!isDemo)
-                ValueListenableBuilder<SocketConnectionStatus>(
-                  valueListenable: SocketService().statusNotifier,
-                  builder: (context, status, _) {
-                    if (status == SocketConnectionStatus.error ||
-                        (status == SocketConnectionStatus.disconnected &&
-                            rooms.isEmpty)) {
-                      return Container(
-                        width: double.infinity,
-                        margin: const EdgeInsets.only(bottom: 16),
-                        padding: const EdgeInsets.all(14),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFFEF2F2),
+              // Wi-Fi Info Banner
+              if (!isDemo && _myLocalIp != null) ...[
+                Container(
+                  width: double.infinity,
+                  margin: const EdgeInsets.only(bottom: 12),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF1F5F9),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: const Color(0xFFE2E8F0)),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.network_check_rounded,
+                          size: 18, color: Color(0xFF475569)),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Your Wi-Fi IP: $_myLocalIp (Local multiplayer active)',
+                          style: const TextStyle(
+                            color: Color(0xFF334155),
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+
+              // Action Buttons Row
+              Row(
+                children: [
+                  Expanded(
+                    child: SizedBox(
+                      height: 48,
+                      child: ElevatedButton.icon(
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                                builder: (_) => const CreateRoomScreen()),
+                          );
+                        },
+                        icon: const Icon(Icons.add,
+                            color: Colors.white, size: 20),
+                        label: const Text(
+                          'Create Room',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF2563EB),
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  SizedBox(
+                    height: 48,
+                    child: OutlinedButton.icon(
+                      onPressed: _showJoinByIpDialog,
+                      icon: const Icon(Icons.link, size: 18),
+                      label: const Text('Join by IP'),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: const Color(0xFF2563EB),
+                        side: const BorderSide(color: Color(0xFFBFDBFE)),
+                        shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: const Color(0xFFFECACA)),
                         ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Row(
-                              children: [
-                                Icon(Icons.wifi_off_rounded,
-                                    color: Color(0xFFDC2626), size: 20),
-                                SizedBox(width: 8),
-                                Text(
-                                  'Backend Server Unavailable',
-                                  style: TextStyle(
-                                    color: Color(0xFF991B1B),
-                                    fontWeight: FontWeight.w700,
-                                    fontSize: 14,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 6),
-                            Text(
-                              SocketService().errorMessage ??
-                                  'Could not connect to multiplayer backend (localhost:3000).',
-                              style: const TextStyle(
-                                color: Color(0xFF7F1D1D),
-                                fontSize: 12,
-                              ),
-                            ),
-                            const SizedBox(height: 10),
-                            Row(
-                              children: [
-                                ElevatedButton.icon(
-                                  onPressed: () {
-                                    SocketService().connect();
-                                    _loadRooms();
-                                  },
-                                  icon: const Icon(Icons.refresh, size: 16),
-                                  label: const Text('Retry'),
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: const Color(0xFFDC2626),
-                                    foregroundColor: Colors.white,
-                                    elevation: 0,
-                                    padding: const EdgeInsets.symmetric(
-                                        horizontal: 12, vertical: 8),
-                                    minimumSize: Size.zero,
-                                    textStyle: const TextStyle(
-                                        fontSize: 13,
-                                        fontWeight: FontWeight.w600),
-                                  ),
-                                ),
-                                const SizedBox(width: 10),
-                                OutlinedButton.icon(
-                                  onPressed: _enableDemoMode,
-                                  icon: const Icon(Icons.play_arrow_rounded,
-                                      size: 16),
-                                  label: const Text('Switch to Demo Mode'),
-                                  style: OutlinedButton.styleFrom(
-                                    foregroundColor: const Color(0xFF991B1B),
-                                    side: const BorderSide(
-                                        color: Color(0xFFFCA5A5)),
-                                    padding: const EdgeInsets.symmetric(
-                                        horizontal: 12, vertical: 8),
-                                    minimumSize: Size.zero,
-                                    textStyle: const TextStyle(
-                                        fontSize: 13,
-                                        fontWeight: FontWeight.w600),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      );
-                    }
-                    return const SizedBox.shrink();
-                  },
-                ),
-
-              const SizedBox(height: 8),
-
-              // Create Room Button
-              SizedBox(
-                width: double.infinity,
-                height: 48,
-                child: ElevatedButton.icon(
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                          builder: (_) => const CreateRoomScreen()),
-                    );
-                  },
-                  icon: const Icon(Icons.add, color: Colors.white, size: 20),
-                  label: const Text(
-                    'Create Room',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF2563EB),
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                ),
+                ],
               ),
 
-              const SizedBox(height: 20),
+              const SizedBox(height: 16),
 
               // Rooms List
               Expanded(
                 child: rooms.isEmpty
-                    ? const Center(
+                    ? Center(
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Icon(
-                              Icons.meeting_room_outlined,
+                            const Icon(
+                              Icons.wifi_find_rounded,
                               size: 48,
                               color: Color(0xFFCBD5E1),
                             ),
-                            SizedBox(height: 12),
-                            Text(
-                              'No open rooms available',
+                            const SizedBox(height: 12),
+                            const Text(
+                              'Scanning local Wi-Fi for rooms...',
                               style: TextStyle(
                                 color: Color(0xFF64748B),
                                 fontSize: 15,
                                 fontWeight: FontWeight.w500,
                               ),
                             ),
-                            SizedBox(height: 4),
-                            Text(
-                              'Create one above to get started!',
+                            const SizedBox(height: 6),
+                            const Text(
+                              'Create a room above to host on your Wi-Fi,\nor tap "Play Solo" to practice offline.',
+                              textAlign: TextAlign.center,
                               style: TextStyle(
                                 color: Color(0xFF94A3B8),
                                 fontSize: 13,
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                            OutlinedButton.icon(
+                              onPressed: _enableDemoMode,
+                              icon: const Icon(Icons.play_circle_outline,
+                                  size: 18),
+                              label: const Text('Play Solo (Offline Demo)'),
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: const Color(0xFF2563EB),
+                                side:
+                                    const BorderSide(color: Color(0xFFBFDBFE)),
                               ),
                             ),
                           ],

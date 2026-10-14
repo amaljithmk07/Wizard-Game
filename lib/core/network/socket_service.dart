@@ -18,17 +18,21 @@ class SocketService {
 
   WebSocket? _webSocket;
   final ValueNotifier<SocketConnectionStatus> statusNotifier =
-      ValueNotifier<SocketConnectionStatus>(SocketConnectionStatus.disconnected);
+      ValueNotifier<SocketConnectionStatus>(
+          SocketConnectionStatus.disconnected);
 
   String? _errorMessage;
   String? get errorMessage => _errorMessage;
 
   String? _socketId;
-  String? get socketId =>
-      AppConfig.isDemoMode ? 'demo_player_local' : (_socketId ?? 'player_client');
+  String? get socketId => AppConfig.isDemoMode
+      ? 'demo_player_local'
+      : (_socketId ?? 'player_client');
 
   bool get isConnected =>
-      !AppConfig.isDemoMode && _webSocket != null && _webSocket!.readyState == WebSocket.open;
+      !AppConfig.isDemoMode &&
+      _webSocket != null &&
+      _webSocket!.readyState == WebSocket.open;
 
   final Map<String, List<Function(dynamic)>> _listeners = {};
 
@@ -76,7 +80,8 @@ class SocketService {
       statusNotifier.value = SocketConnectionStatus.connected;
 
       if (kDebugMode) {
-        print('[SocketService] Connected to LAN host at $wsUrl (ID: $_socketId)');
+        print(
+            '[SocketService] Connected to LAN host at $wsUrl (ID: $_socketId)');
       }
 
       _webSocket!.listen(
@@ -91,28 +96,38 @@ class SocketService {
                 try {
                   handler(payload);
                 } catch (e) {
-                  if (kDebugMode) print('[SocketService] Handler error for $event: $e');
+                  if (kDebugMode) {
+                    print('[SocketService] Handler error for $event: $e');
+                  }
                 }
               }
             }
           } catch (e) {
-            if (kDebugMode) print('[SocketService] Error decoding message: $e');
+            if (kDebugMode) {
+              print('[SocketService] Error decoding message: $e');
+            }
           }
         },
         onDone: () {
           statusNotifier.value = SocketConnectionStatus.disconnected;
-          if (kDebugMode) print('[SocketService] Disconnected from host');
+          if (kDebugMode) {
+            print('[SocketService] Disconnected from host');
+          }
         },
         onError: (err) {
           statusNotifier.value = SocketConnectionStatus.error;
           _errorMessage = 'Socket error: $err';
-          if (kDebugMode) print('[SocketService] Connection error: $err');
+          if (kDebugMode) {
+            print('[SocketService] Connection error: $err');
+          }
         },
       );
     } catch (e) {
       statusNotifier.value = SocketConnectionStatus.error;
       _errorMessage = 'Could not connect to host at $serverUrl';
-      if (kDebugMode) print('[SocketService] Failed to connect: $e');
+      if (kDebugMode) {
+        print('[SocketService] Failed to connect: $e');
+      }
     }
   }
 
@@ -142,7 +157,9 @@ class SocketService {
         final payload = jsonEncode({'event': event, 'data': data ?? {}});
         _webSocket!.add(payload);
       } catch (e) {
-        if (kDebugMode) print('[SocketService] Error emitting $event: $e');
+        if (kDebugMode) {
+          print('[SocketService] Error emitting $event: $e');
+        }
       }
     }
   }
