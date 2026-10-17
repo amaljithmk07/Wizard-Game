@@ -3,8 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'screens/name/name_screen.dart';
 
-export 'core/config/app_config.dart' show demoMode;
-
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
   runApp(

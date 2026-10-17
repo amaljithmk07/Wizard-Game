@@ -1,10 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/network/socket_service.dart';
-import '../../models/game_card.dart';
-import '../../models/game_room.dart';
-import '../../models/game_state.dart';
-import '../../models/player.dart';
 import '../../providers/game_provider.dart';
 import '../../providers/room_provider.dart';
 import '../../widgets/game_card_widget.dart';
@@ -269,6 +265,27 @@ class _GameScreenState extends ConsumerState<GameScreen> {
                               fontSize: 12,
                               fontWeight: FontWeight.w700,
                               color: Color(0xFF64748B),
+                            ),
+                          ),
+                        ],
+                        if (wizardState.trumpCard?.isWizard == true && myPlayer.isDealer) ...[
+                          const SizedBox(width: 8),
+                          GestureDetector(
+                            onTap: _showTrumpChoiceDialog,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF7C3AED),
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: const Text(
+                                'CHOOSE',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
                             ),
                           ),
                         ],

@@ -1,12 +1,9 @@
-import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/network/socket_service.dart';
 import '../../models/game_card.dart';
 import '../../models/game_room.dart';
-import '../../models/game_state.dart';
 import '../../models/player.dart';
-import 'room_provider.dart';
 
 class GameState {
   final List<GameCard> myHand;
@@ -58,9 +55,7 @@ final gameProvider = StateNotifierProvider<GameNotifier, GameState>((ref) {
 });
 
 class GameNotifier extends StateNotifier<GameState> {
-  final Ref _ref;
-
-  GameNotifier(this._ref) : super(GameState()) {
+  GameNotifier([Ref? ref]) : super(GameState()) {
     _initSocket();
   }
 

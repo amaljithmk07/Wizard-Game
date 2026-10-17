@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../core/config/app_config.dart';
 import '../../providers/player_provider.dart';
 import '../../providers/room_provider.dart';
 import '../lobby/room_lobby_screen.dart';
