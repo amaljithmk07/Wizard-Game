@@ -45,7 +45,7 @@ class SocketService {
     }
   }
 
-  Future<void> connect({String serverUrl = 'ws://localhost:8080'}) async {
+  Future<void> connect({String? serverUrl}) async {
     if (AppConfig.isDemoMode || _isTestEnvironment()) {
       if (kDebugMode) {
         print('[SocketService] Connection skipped (Demo Mode or Test).');
@@ -53,8 +53,12 @@ class SocketService {
       return;
     }
 
+    final targetUrl = (serverUrl != null && serverUrl.isNotEmpty)
+        ? serverUrl
+        : AppConfig.serverUrl;
+
     // Convert http:// to ws:// if provided
-    String wsUrl = serverUrl;
+    String wsUrl = targetUrl;
     if (wsUrl.startsWith('http://')) {
       wsUrl = 'ws://${wsUrl.substring(7)}';
     } else if (wsUrl.startsWith('https://')) {
@@ -70,7 +74,7 @@ class SocketService {
 
     try {
       _webSocket = await WebSocket.connect(wsUrl).timeout(
-        const Duration(seconds: 4),
+        const Duration(seconds: 10),
         onTimeout: () {
           throw TimeoutException('Connection to $wsUrl timed out');
         },
@@ -81,7 +85,7 @@ class SocketService {
 
       if (kDebugMode) {
         print(
-            '[SocketService] Connected to LAN host at $wsUrl (ID: $_socketId)');
+            '[SocketService] Connected to host at $wsUrl (ID: $_socketId)');
       }
 
       _webSocket!.listen(

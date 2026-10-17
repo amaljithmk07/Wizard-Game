@@ -164,7 +164,29 @@ class CurrentRoomNotifier extends StateNotifier<GameRoom?> {
       return;
     }
 
-    // Host on Local Wi-Fi using embedded Dart server!
+    // If connected to online server, create room on the cloud server
+    if (SocketService().isConnected) {
+      SocketService().emit('create_room', {
+        'roomName': roomName,
+        'maxPlayers': maxPlayers,
+      });
+      return;
+    }
+
+    // Try connecting to cloud server first
+    try {
+      await SocketService().connect();
+      if (SocketService().isConnected) {
+        SocketService().emit('set_player_name', {'name': playerName});
+        SocketService().emit('create_room', {
+          'roomName': roomName,
+          'maxPlayers': maxPlayers,
+        });
+        return;
+      }
+    } catch (_) {}
+
+    // Fallback: Host on Local Wi-Fi using embedded Dart server if offline
     try {
       final server = LocalGameServer();
       final port = await server.startServer(
@@ -184,7 +206,6 @@ class CurrentRoomNotifier extends StateNotifier<GameRoom?> {
 
       state = server.room;
     } catch (e) {
-      // Fallback: emit on existing socket if available
       SocketService().emit('create_room', {
         'roomName': roomName,
         'maxPlayers': maxPlayers,
@@ -232,6 +253,8 @@ class CurrentRoomNotifier extends StateNotifier<GameRoom?> {
     final targetAddress = hostAddress ?? targetRoom?.hostAddress;
     if (targetAddress != null && targetAddress.isNotEmpty) {
       await SocketService().connect(serverUrl: 'ws://$targetAddress');
+    } else if (!SocketService().isConnected) {
+      await SocketService().connect();
     }
 
     SocketService().emit('join_room', {

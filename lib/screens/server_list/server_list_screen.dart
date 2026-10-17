@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/config/app_config.dart';
 import '../../core/network/local_game_server.dart';
+import '../../core/network/socket_service.dart';
 import '../../providers/room_provider.dart';
 import '../../widgets/room_tile.dart';
 import '../create_room/create_room_screen.dart';
@@ -97,6 +98,63 @@ class _ServerListScreenState extends ConsumerState<ServerListScreen> {
     );
   }
 
+  void _showServerSettingsDialog() {
+    final controller = TextEditingController(text: AppConfig.serverUrl);
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Game Server Settings'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Public Cloud Server URL (Render):',
+              style: TextStyle(fontSize: 13, color: Color(0xFF64748B)),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: controller,
+              decoration: InputDecoration(
+                hintText: 'wss://wizard-game-sk6k.onrender.com',
+                border:
+                    OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                contentPadding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              ),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'All friends in Calicut, Chennai, and Delhi must use the same server to play together.',
+              style: TextStyle(fontSize: 11, color: Color(0xFF94A3B8)),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              controller.text = AppConfig.defaultServerUrl;
+            },
+            child: const Text('Reset Default'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              final text = controller.text.trim();
+              if (text.isNotEmpty) {
+                AppConfig.setServerUrl(text);
+                Navigator.pop(ctx);
+                await SocketService().connect(serverUrl: text);
+                _loadRooms();
+                if (mounted) setState(() {});
+              }
+            },
+            child: const Text('Save & Connect'),
+          ),
+        ],
+      ),
+    );
+  }
+
   void _enableDemoMode() {
     AppConfig.enableRuntimeDemo();
     _loadRooms();
@@ -144,37 +202,65 @@ class _ServerListScreenState extends ConsumerState<ServerListScreen> {
               ),
             ] else ...[
               const SizedBox(width: 10),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFEFF6FF),
-                  borderRadius: BorderRadius.circular(6),
-                  border: Border.all(color: const Color(0xFFBFDBFE)),
-                ),
-                child: const Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.wifi, size: 12, color: Color(0xFF2563EB)),
-                    SizedBox(width: 4),
-                    Text(
-                      'LOCAL WI-FI',
-                      style: TextStyle(
-                        color: Color(0xFF1D4ED8),
-                        fontSize: 10,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: 0.5,
-                      ),
+              ValueListenableBuilder<SocketConnectionStatus>(
+                valueListenable: SocketService().statusNotifier,
+                builder: (context, status, _) {
+                  final isConnected = status == SocketConnectionStatus.connected;
+                  final isConnecting = status == SocketConnectionStatus.connecting;
+                  final color = isConnected
+                      ? const Color(0xFF16A34A)
+                      : (isConnecting ? const Color(0xFFEAB308) : const Color(0xFFDC2626));
+                  final text = isConnected
+                      ? 'ONLINE'
+                      : (isConnecting ? 'CONNECTING...' : 'OFFLINE');
+
+                  return Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: color.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(color: color.withOpacity(0.3)),
                     ),
-                  ],
-                ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          width: 6,
+                          height: 6,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: color,
+                          ),
+                        ),
+                        const SizedBox(width: 5),
+                        Text(
+                          text,
+                          style: TextStyle(
+                            color: color,
+                            fontSize: 10,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                },
               ),
             ],
           ],
         ),
         actions: [
           IconButton(
+            icon: const Icon(Icons.settings_ethernet_rounded,
+                color: Color(0xFF334155), size: 22),
+            tooltip: 'Server Settings',
+            onPressed: _showServerSettingsDialog,
+          ),
+          IconButton(
             icon: const Icon(Icons.refresh_rounded,
                 color: Color(0xFF334155), size: 24),
+            tooltip: 'Refresh Rooms',
             onPressed: _loadRooms,
           ),
           const SizedBox(width: 8),
