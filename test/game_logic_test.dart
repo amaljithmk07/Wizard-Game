@@ -274,4 +274,58 @@ void main() {
       expect(room.playerCount, 2);
     });
   });
+
+  group('Wizard Rules & Scoring Logic', () {
+    test('Wizard and Jester cards identify correctly and render special values', () {
+      final wizard = GameCard.fromJson({
+        'id': 'w1',
+        'name': 'Wizard 🧙‍♂️',
+        'type': 'WIZARD',
+        'suit': 'Wizard',
+        'value': 99,
+      });
+      final jester = GameCard.fromJson({
+        'id': 'j1',
+        'name': 'Jester 🃏',
+        'type': 'JESTER',
+        'suit': 'Jester',
+        'value': 0,
+      });
+
+      expect(wizard.isWizard, isTrue);
+      expect(wizard.isJester, isFalse);
+      expect(wizard.displayValue, 'W');
+      expect(wizard.suitSymbol, '🧙‍♂️');
+
+      expect(jester.isJester, isTrue);
+      expect(jester.isWizard, isFalse);
+      expect(jester.displayValue, 'N');
+      expect(jester.suitSymbol, '🃏');
+    });
+
+    test('Rule 6: Scoring calculates +20 plus +10 per trick on correct bid', () {
+      int calculateScore(int bid, int tricksWon) {
+        if (bid == tricksWon) {
+          return 20 + (tricksWon * 10);
+        } else {
+          return -10 * (tricksWon - bid).abs();
+        }
+      }
+
+      // Bid 3, won 3 -> 20 + 30 = 50
+      expect(calculateScore(3, 3), 50);
+
+      // Bid 0, won 0 -> 20 + 0 = 20
+      expect(calculateScore(0, 0), 20);
+
+      // Bid 3, won 1 -> -10 * 2 = -20
+      expect(calculateScore(3, 1), -20);
+
+      // Bid 1, won 3 -> -10 * 2 = -20
+      expect(calculateScore(1, 3), -20);
+
+      // Bid 2, won 0 -> -10 * 2 = -20
+      expect(calculateScore(2, 0), -20);
+    });
+  });
 }

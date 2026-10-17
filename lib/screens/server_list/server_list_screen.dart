@@ -155,15 +155,9 @@ class _ServerListScreenState extends ConsumerState<ServerListScreen> {
     );
   }
 
-  void _enableDemoMode() {
-    AppConfig.enableRuntimeDemo();
-    _loadRooms();
-  }
-
   @override
   Widget build(BuildContext context) {
     final rooms = ref.watch(roomsProvider);
-    final isDemo = AppConfig.isDemoMode;
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
@@ -181,27 +175,7 @@ class _ServerListScreenState extends ConsumerState<ServerListScreen> {
                 fontWeight: FontWeight.w800,
               ),
             ),
-            if (isDemo) ...[
-              const SizedBox(width: 10),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFFEF3C7),
-                  borderRadius: BorderRadius.circular(6),
-                  border: Border.all(color: const Color(0xFFFCD34D)),
-                ),
-                child: const Text(
-                  'DEMO MODE',
-                  style: TextStyle(
-                    color: Color(0xFF92400E),
-                    fontSize: 10,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: 0.5,
-                  ),
-                ),
-              ),
-            ] else ...[
-              const SizedBox(width: 10),
+            const SizedBox(width: 10),
               ValueListenableBuilder<SocketConnectionStatus>(
                 valueListenable: SocketService().statusNotifier,
                 builder: (context, status, _) {
@@ -248,7 +222,6 @@ class _ServerListScreenState extends ConsumerState<ServerListScreen> {
                 },
               ),
             ],
-          ],
         ),
         actions: [
           IconButton(
@@ -272,7 +245,7 @@ class _ServerListScreenState extends ConsumerState<ServerListScreen> {
           child: Column(
             children: [
               // Wi-Fi Info Banner
-              if (!isDemo && _myLocalIp != null) ...[
+              if (_myLocalIp != null) ...[
                 Container(
                   width: double.infinity,
                   margin: const EdgeInsets.only(bottom: 12),
@@ -361,43 +334,31 @@ class _ServerListScreenState extends ConsumerState<ServerListScreen> {
               // Rooms List
               Expanded(
                 child: rooms.isEmpty
-                    ? Center(
+                    ? const Center(
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            const Icon(
-                              Icons.wifi_find_rounded,
+                            Icon(
+                              Icons.meeting_room_outlined,
                               size: 48,
                               color: Color(0xFFCBD5E1),
                             ),
-                            const SizedBox(height: 12),
-                            const Text(
-                              'Scanning local Wi-Fi for rooms...',
+                            SizedBox(height: 12),
+                            Text(
+                              'No Active Rooms Found',
                               style: TextStyle(
                                 color: Color(0xFF64748B),
-                                fontSize: 15,
-                                fontWeight: FontWeight.w500,
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
                               ),
                             ),
-                            const SizedBox(height: 6),
-                            const Text(
-                              'Create a room above to host on your Wi-Fi,\nor tap "Play Solo" to practice offline.',
+                            SizedBox(height: 6),
+                            Text(
+                              'Tap "Create Room" above to start a game,\nor ask your friend to host and tap Refresh!',
                               textAlign: TextAlign.center,
                               style: TextStyle(
                                 color: Color(0xFF94A3B8),
                                 fontSize: 13,
-                              ),
-                            ),
-                            const SizedBox(height: 16),
-                            OutlinedButton.icon(
-                              onPressed: _enableDemoMode,
-                              icon: const Icon(Icons.play_circle_outline,
-                                  size: 18),
-                              label: const Text('Play Solo (Offline Demo)'),
-                              style: OutlinedButton.styleFrom(
-                                foregroundColor: const Color(0xFF2563EB),
-                                side:
-                                    const BorderSide(color: Color(0xFFBFDBFE)),
                               ),
                             ),
                           ],

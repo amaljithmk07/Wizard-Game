@@ -90,19 +90,7 @@ class GameRoom {
       'status': status,
       'hostAddress': hostAddress,
       'players': players.map((p) => p.toJson()).toList(),
-      'gameState': gameState != null
-          ? {
-              'currentTurnIndex': gameState!.currentTurnIndex,
-              'winner': gameState!.winner,
-              'playedCards': gameState!.playedCards
-                  .map((c) => {
-                        'playerId': c.playerId,
-                        'playerName': c.playerName,
-                        'card': c.card.toJson(),
-                      })
-                  .toList(),
-            }
-          : null,
+      'gameState': gameState?.toJson(),
     };
   }
 }

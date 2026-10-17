@@ -1,6 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/config/app_config.dart';
-import '../../core/mock/demo_game_data.dart';
 import '../../core/network/lan_discovery_service.dart';
 import '../../core/network/local_game_server.dart';
 import '../../core/network/socket_service.dart';
@@ -20,7 +19,6 @@ class RoomsNotifier extends StateNotifier<List<GameRoom>> {
     _initLanDiscovery();
   }
 
-  List<GameRoom> _localDemoRooms = [];
   List<GameRoom> _lanDiscoveredRooms = [];
 
   void _initSocket() {
@@ -68,25 +66,9 @@ class RoomsNotifier extends StateNotifier<List<GameRoom>> {
   }
 
   void fetchRooms() {
-    if (AppConfig.isDemoMode) {
-      if (_localDemoRooms.isEmpty) {
-        _localDemoRooms = getInitialDemoRooms();
-      }
-      state = List.from(_localDemoRooms);
-      return;
-    }
-
-    // Merge currently discovered LAN rooms
+    // Merge currently discovered LAN rooms and request online rooms
     _mergeAndEmit();
     SocketService().emit('get_rooms');
-  }
-
-  void addDemoRoom(GameRoom room) {
-    if (_localDemoRooms.isEmpty) {
-      _localDemoRooms = getInitialDemoRooms();
-    }
-    _localDemoRooms = [room, ..._localDemoRooms];
-    state = List.from(_localDemoRooms);
   }
 
   @override
@@ -136,33 +118,6 @@ class CurrentRoomNotifier extends StateNotifier<GameRoom?> {
 
   Future<void> createRoom(String roomName, int maxPlayers) async {
     final playerName = _ref.read(playerNameProvider);
-
-    if (AppConfig.isDemoMode) {
-      final user = Player(
-        id: 'demo_player_local',
-        name: playerName.isNotEmpty ? playerName : 'Player',
-        isHost: true,
-      );
-      final bot = Player(
-        id: 'bot_merlin',
-        name: 'Merlin',
-        isHost: false,
-      );
-
-      final newRoom = GameRoom(
-        id: 'demo_room_${DateTime.now().millisecondsSinceEpoch % 10000}',
-        name: roomName,
-        hostId: user.id,
-        maxPlayers: maxPlayers,
-        playerCount: 2,
-        status: 'WAITING',
-        players: [user, bot],
-      );
-
-      _ref.read(roomsProvider.notifier).addDemoRoom(newRoom);
-      state = newRoom;
-      return;
-    }
 
     // If connected to online server, create room on the cloud server
     if (SocketService().isConnected) {
@@ -216,33 +171,6 @@ class CurrentRoomNotifier extends StateNotifier<GameRoom?> {
   Future<void> joinRoom(String roomId, {String? hostAddress}) async {
     final playerName = _ref.read(playerNameProvider);
 
-    if (AppConfig.isDemoMode) {
-      final allRooms = _ref.read(roomsProvider);
-      GameRoom target = allRooms.firstWhere(
-        (r) => r.id == roomId,
-        orElse: () => getInitialDemoRooms().first,
-      );
-
-      final user = Player(
-        id: 'demo_player_local',
-        name: playerName.isNotEmpty ? playerName : 'Player',
-        isHost: false,
-      );
-
-      final updatedPlayers = [
-        ...target.players.where((p) => p.id != user.id),
-        user,
-      ];
-
-      final updatedRoom = target.copyWith(
-        players: updatedPlayers,
-        playerCount: updatedPlayers.length,
-      );
-
-      state = updatedRoom;
-      return;
-    }
-
     // Check if room has a host address on Wi-Fi (e.g. 192.168.1.15:8080)
     final allRooms = _ref.read(roomsProvider);
     final targetRoom = allRooms.cast<GameRoom?>().firstWhere(
@@ -292,36 +220,6 @@ class CurrentRoomNotifier extends StateNotifier<GameRoom?> {
   }
 
   void startGame() {
-    if (AppConfig.isDemoMode) {
-      if (state == null) return;
-
-      final deck = generateDemoDeck();
-      final currentPlayers = state!.players;
-      final updatedPlayers = <Player>[];
-
-      for (int i = 0; i < currentPlayers.length; i++) {
-        final hand = deck.sublist(i * 5, (i + 1) * 5);
-        updatedPlayers.add(
-          currentPlayers[i].copyWith(
-            hand: hand,
-            score: 0,
-          ),
-        );
-      }
-
-      final startedRoom = state!.copyWith(
-        status: 'PLAYING',
-        players: updatedPlayers,
-        gameState: GameStateModel(
-          currentTurnIndex: 0,
-          playedCards: [],
-        ),
-      );
-
-      state = startedRoom;
-      return;
-    }
-
     SocketService().emit('start_game');
   }
 

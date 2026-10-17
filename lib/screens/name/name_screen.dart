@@ -51,8 +51,6 @@ class _NameScreenState extends ConsumerState<NameScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isDemo = AppConfig.isDemoMode;
-
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
       body: SafeArea(
@@ -60,35 +58,6 @@ class _NameScreenState extends ConsumerState<NameScreen> {
           padding: const EdgeInsets.symmetric(horizontal: 24),
           child: Column(
             children: [
-              if (isDemo) ...[
-                const SizedBox(height: 12),
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFFEF3C7),
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: const Color(0xFFFCD34D)),
-                  ),
-                  child: const Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.offline_bolt_rounded,
-                          size: 16, color: Color(0xFFD97706)),
-                      SizedBox(width: 6),
-                      Text(
-                        'DEMO MODE ACTIVE (No Server)',
-                        style: TextStyle(
-                          color: Color(0xFF92400E),
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: 0.5,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
               const Spacer(),
 
               // Cards Logo Icon

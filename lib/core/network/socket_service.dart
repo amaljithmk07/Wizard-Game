@@ -25,14 +25,10 @@ class SocketService {
   String? get errorMessage => _errorMessage;
 
   String? _socketId;
-  String? get socketId => AppConfig.isDemoMode
-      ? 'demo_player_local'
-      : (_socketId ?? 'player_client');
+  String? get socketId => _socketId ?? 'player_client';
 
   bool get isConnected =>
-      !AppConfig.isDemoMode &&
-      _webSocket != null &&
-      _webSocket!.readyState == WebSocket.open;
+      _webSocket != null && _webSocket!.readyState == WebSocket.open;
 
   final Map<String, List<Function(dynamic)>> _listeners = {};
 

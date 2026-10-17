@@ -142,8 +142,8 @@ class _RoomLobbyScreenState extends ConsumerState<RoomLobbyScreen> {
       );
     }
 
-    final bool isHost = room.hostId == socketId || isDemo;
-    final bool canStart = (isHost || isDemo) && room.playerCount >= 2;
+    final bool isHost = room.hostId == socketId || room.players.firstWhere((p) => p.id == socketId, orElse: () => room.players.first).isHost;
+    final bool canStart = isHost && room.playerCount >= 3 && room.playerCount <= 8;
 
     return PopScope(
       onPopInvokedWithResult: (didPop, _) {
@@ -174,26 +174,6 @@ class _RoomLobbyScreenState extends ConsumerState<RoomLobbyScreen> {
                   ),
                 ),
               ),
-              if (isDemo) ...[
-                const SizedBox(width: 8),
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFFEF3C7),
-                    borderRadius: BorderRadius.circular(6),
-                    border: Border.all(color: const Color(0xFFFCD34D)),
-                  ),
-                  child: const Text(
-                    'DEMO',
-                    style: TextStyle(
-                      color: Color(0xFF92400E),
-                      fontSize: 10,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                ),
-              ],
             ],
           ),
         ),
@@ -290,14 +270,9 @@ class _RoomLobbyScreenState extends ConsumerState<RoomLobbyScreen> {
                           borderRadius: BorderRadius.circular(12),
                         ),
                       ),
-                      child: Text(
-                        isDemo
-                            ? (room.hostId == socketId ||
-                                    room.hostId == 'demo_player_local'
-                                ? 'Start Game'
-                                : 'Start Demo Game')
-                            : 'Start Game',
-                        style: const TextStyle(
+                      child: const Text(
+                        'Start Game',
+                        style: TextStyle(
                           color: Colors.white,
                           fontSize: 16,
                           fontWeight: FontWeight.w600,
@@ -306,11 +281,13 @@ class _RoomLobbyScreenState extends ConsumerState<RoomLobbyScreen> {
                     ),
                   ),
                   const SizedBox(height: 8),
-                  const Align(
+                  Align(
                     alignment: Alignment.center,
                     child: Text(
-                      'Minimum 2 players required',
-                      style: TextStyle(
+                      canStart
+                          ? 'Ready to start!'
+                          : 'Minimum 3 players required (${room.playerCount}/3 joined)',
+                      style: const TextStyle(
                         color: Color(0xFF94A3B8),
                         fontSize: 12,
                         fontWeight: FontWeight.w400,

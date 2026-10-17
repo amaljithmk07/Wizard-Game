@@ -63,25 +63,6 @@ class _CreateRoomScreenState extends ConsumerState<CreateRoomScreen> {
                 fontWeight: FontWeight.w800,
               ),
             ),
-            if (AppConfig.isDemoMode) ...[
-              const SizedBox(width: 8),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFFEF3C7),
-                  borderRadius: BorderRadius.circular(6),
-                  border: Border.all(color: const Color(0xFFFCD34D)),
-                ),
-                child: const Text(
-                  'DEMO',
-                  style: TextStyle(
-                    color: Color(0xFF92400E),
-                    fontSize: 10,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-              ),
-            ],
           ],
         ),
       ),
@@ -150,7 +131,7 @@ class _CreateRoomScreenState extends ConsumerState<CreateRoomScreen> {
               ),
               const SizedBox(height: 12),
               Row(
-                children: [2, 3, 4, 5, 6, 7, 8].map((count) {
+                children: [3, 4, 5, 6, 7, 8].map((count) {
                   final bool isSelected = _maxPlayers == count;
                   return Expanded(
                     child: Padding(

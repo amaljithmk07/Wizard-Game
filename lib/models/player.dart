@@ -5,6 +5,10 @@ class Player {
   final String name;
   final int score;
   final bool isHost;
+  final bool isDealer;
+  final bool isConnected;
+  final int? bid;
+  final int tricksWon;
   final List<GameCard> hand;
 
   Player({
@@ -12,6 +16,10 @@ class Player {
     required this.name,
     this.score = 0,
     this.isHost = false,
+    this.isDealer = false,
+    this.isConnected = true,
+    this.bid,
+    this.tricksWon = 0,
     this.hand = const [],
   });
 
@@ -20,6 +28,10 @@ class Player {
     String? name,
     int? score,
     bool? isHost,
+    bool? isDealer,
+    bool? isConnected,
+    int? bid,
+    int? tricksWon,
     List<GameCard>? hand,
   }) {
     return Player(
@@ -27,6 +39,10 @@ class Player {
       name: name ?? this.name,
       score: score ?? this.score,
       isHost: isHost ?? this.isHost,
+      isDealer: isDealer ?? this.isDealer,
+      isConnected: isConnected ?? this.isConnected,
+      bid: bid ?? this.bid,
+      tricksWon: tricksWon ?? this.tricksWon,
       hand: hand ?? this.hand,
     );
   }
@@ -42,6 +58,10 @@ class Player {
       name: json['name'] ?? 'Player',
       score: json['score'] ?? 0,
       isHost: json['isHost'] ?? false,
+      isDealer: json['isDealer'] ?? false,
+      isConnected: json['isConnected'] ?? true,
+      bid: json['bid'],
+      tricksWon: json['tricksWon'] ?? 0,
       hand: parsedHand,
     );
   }
@@ -52,6 +72,10 @@ class Player {
       'name': name,
       'score': score,
       'isHost': isHost,
+      'isDealer': isDealer,
+      'isConnected': isConnected,
+      'bid': bid,
+      'tricksWon': tricksWon,
       'hand': hand.map((c) => c.toJson()).toList(),
     };
   }
