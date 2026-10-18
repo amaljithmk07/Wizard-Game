@@ -319,7 +319,7 @@ void main() {
     test('RT-1: Round 1 deals exactly 1 card per player (4 players → 4 cards)', () {
       const round = 1;
       const playerCount = 4;
-      final dealtCount = round * playerCount;
+      const dealtCount = round * playerCount;
       expect(dealtCount, equals(4));
       // Full deck must have enough cards for dealing + 1 trump
       final deck = PlayingCardAdapter.create60CardDeck();
