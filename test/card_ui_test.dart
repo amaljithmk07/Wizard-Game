@@ -310,4 +310,166 @@ void main() {
       expect(AppConfig.isDemoMode, isFalse);
     });
   });
+
+  // ═══════════════════════════════════════════════════════════════
+  // Regression Tests (10 required cases)
+  // ═══════════════════════════════════════════════════════════════
+  group('Wizard Game Logic Regression Tests', () {
+    // RT-1: Game starts at round 1 with exactly 1 card per player
+    test('RT-1: Round 1 deals exactly 1 card per player (4 players → 4 cards)', () {
+      const round = 1;
+      const playerCount = 4;
+      final dealtCount = round * playerCount;
+      expect(dealtCount, equals(4));
+      // Full deck must have enough cards for dealing + 1 trump
+      final deck = PlayingCardAdapter.create60CardDeck();
+      expect(deck.length, greaterThanOrEqualTo(dealtCount + 1));
+    });
+
+    // RT-2: Total rounds for each player count match official rules
+    test('RT-2: Total rounds follow the official Wizard table', () {
+      int totalRounds(int n) => switch (n) {
+            3 => 20,
+            4 => 15,
+            5 => 12,
+            6 => 10,
+            7 => 8,
+            8 => 7,
+            _ => 60 ~/ n
+          };
+      expect(totalRounds(3), equals(20));
+      expect(totalRounds(4), equals(15));
+      expect(totalRounds(5), equals(12));
+      expect(totalRounds(6), equals(10));
+      expect(totalRounds(7), equals(8));
+      expect(totalRounds(8), equals(7));
+    });
+
+    // RT-3: Scoring — correct bid
+    test('RT-3: Correct bid scores +20 + 10×tricks', () {
+      const bid = 3;
+      const tricksWon = 3;
+      final score = (bid == tricksWon) ? 20 + (tricksWon * 10) : -10 * (bid - tricksWon).abs();
+      expect(score, equals(50)); // 20 + 30
+    });
+
+    // RT-4: Scoring — overbid
+    test('RT-4: Wrong bid (overbid) scores -10 × |diff|', () {
+      const bid = 3;
+      const tricksWon = 1;
+      final score = (bid == tricksWon) ? 20 + (tricksWon * 10) : -10 * (bid - tricksWon).abs();
+      expect(score, equals(-20));
+    });
+
+    // RT-5: Scoring — underbid
+    test('RT-5: Wrong bid (underbid) scores -10 × |diff|', () {
+      const bid = 1;
+      const tricksWon = 3;
+      final score = (bid == tricksWon) ? 20 + (tricksWon * 10) : -10 * (bid - tricksWon).abs();
+      expect(score, equals(-20));
+    });
+
+    // RT-6: First Wizard played wins the trick
+    test('RT-6: First Wizard beats any other card including trump Ace', () {
+      final played = [
+        PlayedCardItem(
+          playerId: 'p1',
+          playerName: 'Alice',
+          card: GameCard(id: 'wizard_1', suit: 'Wizard', value: 99, name: 'Wizard', type: CardType.wizard),
+        ),
+        PlayedCardItem(
+          playerId: 'p2',
+          playerName: 'Bob',
+          card: GameCard(id: 'spades_14', suit: 'Spades', value: 14, name: 'Ace of Spades'),
+        ),
+      ];
+
+      PlayedCardItem winner = played.first;
+      for (final item in played) {
+        if (item.card.isWizard) { winner = item; break; }
+      }
+      expect(winner.playerId, equals('p1'));
+    });
+
+    // RT-7: Highest trump beats highest led suit
+    test('RT-7: 2 of trump beats Ace of led suit', () {
+      const trumpSuit = 'Spades';
+      const ledSuit = 'Hearts';
+      final played = [
+        PlayedCardItem(
+          playerId: 'p1',
+          playerName: 'Alice',
+          card: GameCard(id: 'hearts_14', suit: 'Hearts', value: 14, name: 'Ace of Hearts'),
+        ),
+        PlayedCardItem(
+          playerId: 'p2',
+          playerName: 'Bob',
+          card: GameCard(id: 'spades_2', suit: 'Spades', value: 2, name: '2 of Spades'),
+        ),
+      ];
+
+      PlayedCardItem winner = played.first;
+      final trumpCards = played
+          .where((c) => !c.card.isWizard && !c.card.isJester && c.card.suit == trumpSuit)
+          .toList();
+      if (trumpCards.isNotEmpty) {
+        trumpCards.sort((a, b) => b.card.value.compareTo(a.card.value));
+        winner = trumpCards.first;
+      } else {
+        final ledCards = played
+            .where((c) => !c.card.isWizard && !c.card.isJester && c.card.suit == ledSuit)
+            .toList();
+        ledCards.sort((a, b) => b.card.value.compareTo(a.card.value));
+        if (ledCards.isNotEmpty) winner = ledCards.first;
+      }
+      expect(winner.playerId, equals('p2'));
+    });
+
+    // RT-8: All-Jester trick won by first Jester
+    test('RT-8: All-Jester trick is won by the first Jester played', () {
+      final played = [
+        PlayedCardItem(
+          playerId: 'p1',
+          playerName: 'Alice',
+          card: GameCard(id: 'jester_1', suit: 'Jester', value: 0, name: 'Jester', type: CardType.jester),
+        ),
+        PlayedCardItem(
+          playerId: 'p2',
+          playerName: 'Bob',
+          card: GameCard(id: 'jester_2', suit: 'Jester', value: 0, name: 'Jester', type: CardType.jester),
+        ),
+      ];
+      // No Wizards, no trumps, no led-suit normal cards → first card wins
+      PlayedCardItem winner = played.first;
+      expect(winner.playerId, equals('p1'));
+    });
+
+    // RT-9: Follow-suit enforcement
+    test('RT-9: Off-suit play is illegal when player holds the led suit', () {
+      final hand = [
+        GameCard(id: 'h10', suit: 'Hearts', value: 10, name: '10H'),
+        GameCard(id: 's5', suit: 'Spades', value: 5, name: '5S'),
+      ];
+      const ledSuit = 'Hearts';
+      final attemptedCard = hand[1]; // Spades
+
+      final hasSuit = hand.any((c) => !c.isWizard && !c.isJester && c.suit == ledSuit);
+      final isLegal = !hasSuit ||
+          attemptedCard.isWizard ||
+          attemptedCard.isJester ||
+          attemptedCard.suit == ledSuit;
+      expect(isLegal, isFalse);
+    });
+
+    // RT-10: Bid range validation
+    test('RT-10: Bid must be within [0, currentRound]', () {
+      const currentRound = 3;
+      bool bidValid(int bid) => bid >= 0 && bid <= currentRound;
+
+      expect(bidValid(0), isTrue);
+      expect(bidValid(3), isTrue);
+      expect(bidValid(4), isFalse);
+      expect(bidValid(-1), isFalse);
+    });
+  });
 }

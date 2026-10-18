@@ -65,33 +65,36 @@ class GameStateModel {
   bool get isRoundOver => phase == 'ROUND_OVER';
   bool get isGameOver => phase == 'GAME_OVER';
 
+  // Sentinel used to explicitly clear nullable fields in copyWith
+  static const _clear = Object();
+
   GameStateModel copyWith({
     int? round,
     int? totalRounds,
     String? phase,
-    GameCard? trumpCard,
-    String? trumpSuit,
-    String? ledSuit,
+    Object? trumpCard = _clear,
+    Object? trumpSuit = _clear,
+    Object? ledSuit = _clear,
     int? dealerIndex,
     int? currentTurnIndex,
     List<PlayedCardItem>? playedCards,
-    String? trickWinnerName,
-    String? winner,
-    List<Map<String, dynamic>>? roundScores,
+    Object? trickWinnerName = _clear,
+    Object? winner = _clear,
+    Object? roundScores = _clear,
   }) {
     return GameStateModel(
       round: round ?? this.round,
       totalRounds: totalRounds ?? this.totalRounds,
       phase: phase ?? this.phase,
-      trumpCard: trumpCard ?? this.trumpCard,
-      trumpSuit: trumpSuit ?? this.trumpSuit,
-      ledSuit: ledSuit ?? this.ledSuit,
+      trumpCard: identical(trumpCard, _clear) ? this.trumpCard : trumpCard as GameCard?,
+      trumpSuit: identical(trumpSuit, _clear) ? this.trumpSuit : trumpSuit as String?,
+      ledSuit: identical(ledSuit, _clear) ? this.ledSuit : ledSuit as String?,
       dealerIndex: dealerIndex ?? this.dealerIndex,
       currentTurnIndex: currentTurnIndex ?? this.currentTurnIndex,
       playedCards: playedCards ?? this.playedCards,
-      trickWinnerName: trickWinnerName ?? this.trickWinnerName,
-      winner: winner ?? this.winner,
-      roundScores: roundScores ?? this.roundScores,
+      trickWinnerName: identical(trickWinnerName, _clear) ? this.trickWinnerName : trickWinnerName as String?,
+      winner: identical(winner, _clear) ? this.winner : winner as String?,
+      roundScores: identical(roundScores, _clear) ? this.roundScores : roundScores as List<Map<String, dynamic>>?,
     );
   }
 
