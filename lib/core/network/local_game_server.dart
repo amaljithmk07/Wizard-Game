@@ -210,6 +210,23 @@ class LocalGameServer {
         _broadcastRoomUpdated();
         break;
 
+      case 'set_ready':
+      case 'toggle_ready':
+        final playerIndex =
+            _room!.players.indexWhere((p) => p.id == clientId);
+        if (playerIndex != -1) {
+          final current = _room!.players[playerIndex];
+          final bool newReady = payload.containsKey('isReady') &&
+                  payload['isReady'] is bool
+              ? payload['isReady'] as bool
+              : !current.isReady;
+          final updated = List<Player>.from(_room!.players);
+          updated[playerIndex] = current.copyWith(isReady: newReady);
+          _room = _room!.copyWith(players: updated);
+          _broadcastRoomUpdated();
+        }
+        break;
+
       case 'start_game':
         if (_room!.players.length < 2) {
           _sendTo(socket, 'error', {'message': 'At least 2 players required'});

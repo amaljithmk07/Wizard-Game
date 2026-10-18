@@ -249,7 +249,7 @@ function handleEvent(ws, ci, event, data) {
       const room = {
         id: roomId, name: roomName, hostId: ci.id, maxPlayers: max,
         playerCount: 1, status: 'WAITING', createdAt: Date.now(),
-        players: [{ id: ci.id, name: ci.name, score: 0, isHost: true, isDealer: false, isConnected: true, bid: null, tricksWon: 0, hand: [] }],
+        players: [{ id: ci.id, name: ci.name, score: 0, isHost: true, isDealer: false, isConnected: true, isReady: false, bid: null, tricksWon: 0, hand: [] }],
         gameState: null,
       };
       rooms[roomId] = room; ci.roomId = roomId;
@@ -285,10 +285,28 @@ function handleEvent(ws, ci, event, data) {
       }
       if (room.status !== 'WAITING') return sendTo(ws, 'error', { message: 'Game already started.' });
       if (room.players.length >= room.maxPlayers) return sendTo(ws, 'error', { message: 'Room is full.' });
-      room.players.push({ id: ci.id, name: pName, score: 0, isHost: false, isDealer: false, isConnected: true, bid: null, tricksWon: 0, hand: [] });
+      room.players.push({ id: ci.id, name: pName, score: 0, isHost: false, isDealer: false, isConnected: true, isReady: false, bid: null, tricksWon: 0, hand: [] });
       room.playerCount = room.players.length; ci.roomId = roomId;
       log('info', 'Player joined', { name: pName, roomId, count: `${room.players.length}/${room.maxPlayers}` });
       sendTo(ws, 'room_joined', room); broadcastToRoom(roomId, 'room_updated'); broadcastLobbyUpdate();
+      break;
+    }
+
+    case 'set_ready':
+    case 'toggle_ready': {
+      const roomId = ci.roomId;
+      if (!roomId || !rooms[roomId]) return;
+      const room = rooms[roomId];
+      const player = room.players.find(p => p.id === ci.id);
+      if (!player) return;
+
+      if (data && typeof data.isReady === 'boolean') {
+        player.isReady = data.isReady;
+      } else {
+        player.isReady = !player.isReady;
+      }
+      log('info', 'Player ready state changed', { name: player.name, isReady: player.isReady, roomId });
+      broadcastToRoom(roomId, 'room_updated');
       break;
     }
 

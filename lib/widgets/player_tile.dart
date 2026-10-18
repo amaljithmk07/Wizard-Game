@@ -4,6 +4,7 @@ class PlayerTile extends StatelessWidget {
   final String name;
   final bool isYou;
   final bool isHost;
+  final bool isReady;
   final bool isWinner;
   final bool isEmpty;
   final int? score;
@@ -13,6 +14,7 @@ class PlayerTile extends StatelessWidget {
     required this.name,
     this.isYou = false,
     this.isHost = false,
+    this.isReady = false,
     this.isWinner = false,
     this.isEmpty = false,
     this.score,
@@ -123,6 +125,35 @@ class PlayerTile extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 8),
+          ],
+
+          if (isReady) ...[
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              decoration: BoxDecoration(
+                color: const Color(0xFFDCFCE7),
+                borderRadius: BorderRadius.circular(6),
+                border: Border.all(color: const Color(0xFF86EFAC)),
+              ),
+              child: const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.check_circle_rounded,
+                      size: 13, color: Color(0xFF16A34A)),
+                  SizedBox(width: 4),
+                  Text(
+                    'READY',
+                    style: TextStyle(
+                      color: Color(0xFF16A34A),
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 6),
           ],
 
           // Pill tag

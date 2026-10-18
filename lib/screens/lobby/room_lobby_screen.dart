@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/config/app_config.dart';
 import '../../core/network/socket_service.dart';
+import '../../models/player.dart';
 import '../../providers/room_provider.dart';
 import '../../widgets/player_tile.dart';
 import '../game/game_screen.dart';
@@ -18,6 +19,7 @@ class RoomLobbyScreen extends ConsumerStatefulWidget {
 class _RoomLobbyScreenState extends ConsumerState<RoomLobbyScreen> {
   Timer? _loadingTimeoutTimer;
   bool _timedOut = false;
+  bool _lastHostReady = false;
 
   @override
   void initState() {
@@ -58,6 +60,7 @@ class _RoomLobbyScreenState extends ConsumerState<RoomLobbyScreen> {
   }
 
   void _onStartGame() {
+    ref.read(currentRoomProvider.notifier).toggleReady(true);
     ref.read(currentRoomProvider.notifier).startGame();
     if (AppConfig.isDemoMode) {
       Navigator.pushReplacement(
@@ -143,8 +146,54 @@ class _RoomLobbyScreenState extends ConsumerState<RoomLobbyScreen> {
       );
     }
 
-    final bool isHost = room.hostId == socketId || room.players.firstWhere((p) => p.id == socketId, orElse: () => room.players.first).isHost;
-    final bool canStart = isHost && room.playerCount >= 3 && room.playerCount <= 8;
+    final bool isHost = room.hostId == socketId ||
+        room.players
+            .firstWhere((p) => p.id == socketId,
+                orElse: () => room.players.first)
+            .isHost;
+    final bool isYouHost = isHost || isDemo;
+    final bool canStart =
+        isHost && room.playerCount >= 3 && room.playerCount <= 8;
+
+    final Player? hostPlayer = room.hostPlayer;
+    final bool isPlayer1Ready = hostPlayer?.isReady ?? false;
+
+    final myPlayer = room.players.firstWhere(
+      (p) => isDemo
+          ? p.isHost || p.id == 'demo_player_local'
+          : p.id == socketId,
+      orElse: () => room.players.first,
+    );
+    final bool isMyPlayerReady = myPlayer.isReady;
+
+    if (!isYouHost && isPlayer1Ready && !_lastHostReady) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).hideCurrentSnackBar();
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Row(
+                children: [
+                  const Icon(Icons.check_circle_rounded,
+                      color: Colors.white, size: 20),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      '${hostPlayer?.name ?? "Player 1"} is READY to start!',
+                      style: const TextStyle(fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                ],
+              ),
+              backgroundColor: const Color(0xFF16A34A),
+              behavior: SnackBarBehavior.floating,
+              duration: const Duration(seconds: 3),
+            ),
+          );
+        }
+      });
+    }
+    _lastHostReady = isPlayer1Ready;
 
     return PopScope(
       onPopInvokedWithResult: (didPop, _) {
@@ -189,7 +238,7 @@ class _RoomLobbyScreenState extends ConsumerState<RoomLobbyScreen> {
                 // Room Code Card (Always visible so host or players can share)
                 Container(
                   width: double.infinity,
-                  margin: const EdgeInsets.only(bottom: 16),
+                  margin: const EdgeInsets.only(bottom: 12),
                   padding:
                       const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                   decoration: BoxDecoration(
@@ -283,6 +332,103 @@ class _RoomLobbyScreenState extends ConsumerState<RoomLobbyScreen> {
                   ),
                 ),
 
+                // Player 1 (Host) Ready Status Banner
+                if (!isYouHost) ...[
+                  if (isPlayer1Ready)
+                    Container(
+                      width: double.infinity,
+                      margin: const EdgeInsets.only(bottom: 14),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 12),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFDCFCE7),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                            color: const Color(0xFF22C55E), width: 1.5),
+                        boxShadow: [
+                          BoxShadow(
+                            color: const Color(0xFF22C55E)
+                                .withValues(alpha: 0.15),
+                            blurRadius: 8,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(6),
+                            decoration: const BoxDecoration(
+                              color: Color(0xFF16A34A),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(Icons.check,
+                                size: 16, color: Colors.white),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  '${hostPlayer?.name ?? "Player 1"} is READY to start!',
+                                  style: const TextStyle(
+                                    color: Color(0xFF14532D),
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                const Text(
+                                  'Get ready! The host will launch the game shortly.',
+                                  style: TextStyle(
+                                    color: Color(0xFF166534),
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    )
+                  else
+                    Container(
+                      width: double.infinity,
+                      margin: const EdgeInsets.only(bottom: 14),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 14, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF1F5F9),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: const Color(0xFFE2E8F0)),
+                      ),
+                      child: Row(
+                        children: [
+                          const SizedBox(
+                            width: 14,
+                            height: 14,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Color(0xFF64748B),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              'Waiting for ${hostPlayer?.name ?? "Player 1"} to get ready...',
+                              style: const TextStyle(
+                                color: Color(0xFF64748B),
+                                fontSize: 13,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                ],
+
                 // Section Header
                 Text(
                   'Players (${room.playerCount} / ${room.maxPlayers})',
@@ -292,7 +438,7 @@ class _RoomLobbyScreenState extends ConsumerState<RoomLobbyScreen> {
                     fontWeight: FontWeight.w700,
                   ),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 12),
 
                 // Player tiles list
                 Expanded(
@@ -311,6 +457,7 @@ class _RoomLobbyScreenState extends ConsumerState<RoomLobbyScreen> {
                           name: player.name,
                           isYou: isYou,
                           isHost: playerIsHost,
+                          isReady: player.isReady,
                         );
                       } else {
                         return const PlayerTile(
@@ -323,7 +470,54 @@ class _RoomLobbyScreenState extends ConsumerState<RoomLobbyScreen> {
                 ),
 
                 // Bottom Action Area
-                if (isHost || isDemo) ...[
+                if (isYouHost) ...[
+                  SizedBox(
+                    width: double.infinity,
+                    height: 46,
+                    child: OutlinedButton.icon(
+                      onPressed: () {
+                        ref
+                            .read(currentRoomProvider.notifier)
+                            .toggleReady(!isPlayer1Ready);
+                      },
+                      icon: Icon(
+                        isPlayer1Ready
+                            ? Icons.check_circle_rounded
+                            : Icons.radio_button_unchecked_rounded,
+                        color: isPlayer1Ready
+                            ? const Color(0xFF16A34A)
+                            : const Color(0xFF2563EB),
+                        size: 20,
+                      ),
+                      label: Text(
+                        isPlayer1Ready
+                            ? 'You are READY! (Tap to unmark)'
+                            : 'Mark as READY to Start',
+                        style: TextStyle(
+                          color: isPlayer1Ready
+                              ? const Color(0xFF16A34A)
+                              : const Color(0xFF2563EB),
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      style: OutlinedButton.styleFrom(
+                        backgroundColor: isPlayer1Ready
+                            ? const Color(0xFFDCFCE7)
+                            : Colors.white,
+                        side: BorderSide(
+                          color: isPlayer1Ready
+                              ? const Color(0xFF22C55E)
+                              : const Color(0xFFBFDBFE),
+                          width: 1.5,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
                   SizedBox(
                     width: double.infinity,
                     height: 52,
@@ -352,7 +546,9 @@ class _RoomLobbyScreenState extends ConsumerState<RoomLobbyScreen> {
                     alignment: Alignment.center,
                     child: Text(
                       canStart
-                          ? 'Ready to start!'
+                          ? (isPlayer1Ready
+                              ? 'Ready to start! Tap Start Game above.'
+                              : 'Ready to start!')
                           : 'Minimum 3 players required (${room.playerCount}/3 joined)',
                       style: const TextStyle(
                         color: Color(0xFF94A3B8),
@@ -366,16 +562,90 @@ class _RoomLobbyScreenState extends ConsumerState<RoomLobbyScreen> {
                     width: double.infinity,
                     height: 52,
                     decoration: BoxDecoration(
-                      color: const Color(0xFFF1F5F9),
+                      color: isPlayer1Ready
+                          ? const Color(0xFFDCFCE7)
+                          : const Color(0xFFF1F5F9),
                       borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: isPlayer1Ready
+                            ? const Color(0xFF16A34A)
+                            : const Color(0xFFE2E8F0),
+                        width: 1.5,
+                      ),
                     ),
                     alignment: Alignment.center,
-                    child: const Text(
-                      'Waiting for host to start...',
-                      style: TextStyle(
-                        color: Color(0xFF64748B),
-                        fontSize: 15,
-                        fontWeight: FontWeight.w500,
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          isPlayer1Ready
+                              ? Icons.check_circle_rounded
+                              : Icons.hourglass_top_rounded,
+                          color: isPlayer1Ready
+                              ? const Color(0xFF16A34A)
+                              : const Color(0xFF64748B),
+                          size: 20,
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          isPlayer1Ready
+                              ? 'Player 1 is READY to start! Waiting for launch...'
+                              : 'Waiting for host to start...',
+                          style: TextStyle(
+                            color: isPlayer1Ready
+                                ? const Color(0xFF15803D)
+                                : const Color(0xFF64748B),
+                            fontSize: 14,
+                            fontWeight: isPlayer1Ready
+                                ? FontWeight.w700
+                                : FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 44,
+                    child: OutlinedButton.icon(
+                      onPressed: () {
+                        ref
+                            .read(currentRoomProvider.notifier)
+                            .toggleReady(!isMyPlayerReady);
+                      },
+                      icon: Icon(
+                        isMyPlayerReady
+                            ? Icons.check_circle_rounded
+                            : Icons.radio_button_unchecked,
+                        size: 18,
+                        color: isMyPlayerReady
+                            ? const Color(0xFF16A34A)
+                            : const Color(0xFF64748B),
+                      ),
+                      label: Text(
+                        isMyPlayerReady
+                            ? 'You are Ready! (Tap to unmark)'
+                            : 'Mark I\'m Ready',
+                        style: TextStyle(
+                          color: isMyPlayerReady
+                              ? const Color(0xFF16A34A)
+                              : const Color(0xFF64748B),
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      style: OutlinedButton.styleFrom(
+                        backgroundColor: isMyPlayerReady
+                            ? const Color(0xFFDCFCE7)
+                            : Colors.white,
+                        side: BorderSide(
+                          color: isMyPlayerReady
+                              ? const Color(0xFF86EFAC)
+                              : const Color(0xFFCBD5E1),
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
                       ),
                     ),
                   ),

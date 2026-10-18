@@ -41,11 +41,48 @@ class SocketService {
     }
   }
 
+  Timer? _reconnectTimer;
+  bool _autoReconnectEnabled = true;
+
+  void enableAutoReconnect() {
+    _autoReconnectEnabled = true;
+  }
+
+  void disableAutoReconnect() {
+    _autoReconnectEnabled = false;
+    _reconnectTimer?.cancel();
+  }
+
+  void _scheduleReconnect() {
+    if (!_autoReconnectEnabled ||
+        AppConfig.isDemoMode ||
+        _isTestEnvironment()) {
+      return;
+    }
+    _reconnectTimer?.cancel();
+    _reconnectTimer = Timer(const Duration(seconds: 3), () {
+      if (!isConnected &&
+          _autoReconnectEnabled &&
+          !AppConfig.isDemoMode &&
+          !_isTestEnvironment()) {
+        if (kDebugMode) {
+          print('[SocketService] Auto-reconnecting to server...');
+        }
+        connect();
+      }
+    });
+  }
+
   Future<void> connect({String? serverUrl}) async {
     if (AppConfig.isDemoMode || _isTestEnvironment()) {
       if (kDebugMode) {
         print('[SocketService] Connection skipped (Demo Mode or Test).');
       }
+      return;
+    }
+
+    // If already connected and no specific different URL requested, skip
+    if (isConnected && (serverUrl == null || serverUrl.isEmpty)) {
       return;
     }
 
@@ -63,7 +100,8 @@ class SocketService {
       wsUrl = 'ws://$wsUrl';
     }
 
-    disconnect();
+    _reconnectTimer?.cancel();
+    _internalDisconnect();
 
     statusNotifier.value = SocketConnectionStatus.connecting;
     _errorMessage = null;
@@ -113,6 +151,7 @@ class SocketService {
           if (kDebugMode) {
             print('[SocketService] Disconnected from host');
           }
+          _scheduleReconnect();
         },
         onError: (err) {
           statusNotifier.value = SocketConnectionStatus.error;
@@ -120,22 +159,31 @@ class SocketService {
           if (kDebugMode) {
             print('[SocketService] Connection error: $err');
           }
+          _scheduleReconnect();
         },
       );
     } catch (e) {
       statusNotifier.value = SocketConnectionStatus.error;
-      _errorMessage = 'Could not connect to host at $serverUrl';
+      _errorMessage = 'Could not connect to host at $targetUrl';
       if (kDebugMode) {
         print('[SocketService] Failed to connect: $e');
       }
+      _scheduleReconnect();
     }
   }
 
-  void disconnect() {
+  void _internalDisconnect() {
     try {
       _webSocket?.close();
     } catch (_) {}
     _webSocket = null;
+  }
+
+  void disconnect({bool stopAutoReconnect = false}) {
+    if (stopAutoReconnect) {
+      disableAutoReconnect();
+    }
+    _internalDisconnect();
     statusNotifier.value = SocketConnectionStatus.disconnected;
   }
 

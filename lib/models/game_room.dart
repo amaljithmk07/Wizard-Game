@@ -28,6 +28,16 @@ class GameRoom {
   bool get isWaiting => status == 'WAITING';
   bool get isLocalLan => hostAddress != null && hostAddress!.isNotEmpty;
 
+  Player? get hostPlayer {
+    try {
+      return players.firstWhere((p) => p.id == hostId || p.isHost);
+    } catch (_) {
+      return players.isNotEmpty ? players.first : null;
+    }
+  }
+
+  bool get isHostReady => hostPlayer?.isReady ?? false;
+
   GameRoom copyWith({
     String? id,
     String? name,

@@ -25,6 +25,12 @@ class RoomsNotifier extends StateNotifier<List<GameRoom>> {
     if (AppConfig.isDemoMode) return;
 
     final socket = SocketService();
+    socket.statusNotifier.addListener(() {
+      if (socket.isConnected) {
+        fetchRooms();
+      }
+    });
+
     socket.on('rooms_updated', (data) {
       if (data is List) {
         final list = data
@@ -222,16 +228,32 @@ class CurrentRoomNotifier extends StateNotifier<GameRoom?> {
     if (_isHostingLocally) {
       LocalGameServer().stopServer();
       _isHostingLocally = false;
+      SocketService().disconnect();
+      // Reconnect automatically to cloud server
+      SocketService().connect();
+    } else {
+      if (!AppConfig.isDemoMode) {
+        SocketService().emit('leave_room');
+      }
     }
 
+    state = null;
+  }
+
+  void toggleReady([bool? ready]) {
     if (AppConfig.isDemoMode) {
-      state = null;
+      if (state != null && state!.players.isNotEmpty) {
+        final updatedPlayers = state!.players.map((p) {
+          if (p.isHost || p.id == 'demo_me') {
+            return p.copyWith(isReady: ready ?? !p.isReady);
+          }
+          return p;
+        }).toList();
+        state = state!.copyWith(players: updatedPlayers);
+      }
       return;
     }
-
-    SocketService().emit('leave_room');
-    SocketService().disconnect();
-    state = null;
+    SocketService().emit('set_ready', {'isReady': ready});
   }
 
   void startGame() {

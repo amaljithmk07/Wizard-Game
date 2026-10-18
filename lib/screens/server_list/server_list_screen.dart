@@ -21,6 +21,9 @@ class _ServerListScreenState extends ConsumerState<ServerListScreen> {
   @override
   void initState() {
     super.initState();
+    if (!SocketService().isConnected && !AppConfig.isDemoMode) {
+      SocketService().connect();
+    }
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _loadRooms();
     });
@@ -157,63 +160,6 @@ class _ServerListScreenState extends ConsumerState<ServerListScreen> {
     );
   }
 
-  void _showServerSettingsDialog() {
-    final controller = TextEditingController(text: AppConfig.serverUrl);
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Game Server Settings'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Public Cloud Server URL (Render):',
-              style: TextStyle(fontSize: 13, color: Color(0xFF64748B)),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: controller,
-              decoration: InputDecoration(
-                hintText: 'wss://wizard-game-sk6k.onrender.com',
-                border:
-                    OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                contentPadding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-              ),
-            ),
-            const SizedBox(height: 8),
-            const Text(
-              'All friends in Calicut, Chennai, and Delhi must use the same server to play together.',
-              style: TextStyle(fontSize: 11, color: Color(0xFF94A3B8)),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              controller.text = AppConfig.defaultServerUrl;
-            },
-            child: const Text('Reset Default'),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              final text = controller.text.trim();
-              if (text.isNotEmpty) {
-                AppConfig.setServerUrl(text);
-                Navigator.pop(ctx);
-                await SocketService().connect(serverUrl: text);
-                _loadRooms();
-                if (mounted) setState(() {});
-              }
-            },
-            child: const Text('Save & Connect'),
-          ),
-        ],
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final rooms = ref.watch(roomsProvider);
@@ -283,12 +229,6 @@ class _ServerListScreenState extends ConsumerState<ServerListScreen> {
             ],
         ),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.settings_ethernet_rounded,
-                color: Color(0xFF334155), size: 22),
-            tooltip: 'Server Settings',
-            onPressed: _showServerSettingsDialog,
-          ),
           IconButton(
             icon: const Icon(Icons.refresh_rounded,
                 color: Color(0xFF334155), size: 24),

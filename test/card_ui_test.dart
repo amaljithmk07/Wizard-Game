@@ -472,4 +472,42 @@ void main() {
       expect(bidValid(-1), isFalse);
     });
   });
+
+  group('Player & Host Readiness Tests', () {
+    test('Player model defaults isReady to false and serializes properly', () {
+      final player = Player(id: 'p1', name: 'Tester', isHost: true);
+      expect(player.isReady, isFalse);
+
+      final updated = player.copyWith(isReady: true);
+      expect(updated.isReady, isTrue);
+
+      final json = updated.toJson();
+      expect(json['isReady'], isTrue);
+
+      final deserialized = Player.fromJson(json);
+      expect(deserialized.isReady, isTrue);
+    });
+
+    test('GameRoom isHostReady returns true when host is ready', () {
+      final host = Player(id: 'host_1', name: 'Host Player', isHost: true, isReady: false);
+      final guest = Player(id: 'guest_1', name: 'Guest Player', isHost: false, isReady: true);
+
+      final room = GameRoom(
+        id: 'WZ1234',
+        name: 'Test Room',
+        hostId: 'host_1',
+        maxPlayers: 4,
+        playerCount: 2,
+        status: 'WAITING',
+        players: [host, guest],
+      );
+
+      expect(room.isHostReady, isFalse);
+
+      final updatedRoom = room.copyWith(
+        players: [host.copyWith(isReady: true), guest],
+      );
+      expect(updatedRoom.isHostReady, isTrue);
+    });
+  });
 }

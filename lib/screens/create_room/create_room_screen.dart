@@ -19,7 +19,11 @@ class _CreateRoomScreenState extends ConsumerState<CreateRoomScreen> {
   void initState() {
     super.initState();
     final playerName = ref.read(playerNameProvider);
-    _nameController = TextEditingController(text: "$playerName's Room");
+    final defaultRoomName =
+        (playerName.isNotEmpty && playerName.toLowerCase() != 'Player 1')
+            ? "$playerName's Room"
+            : "Wizard Room";
+    _nameController = TextEditingController(text: defaultRoomName);
   }
 
   @override

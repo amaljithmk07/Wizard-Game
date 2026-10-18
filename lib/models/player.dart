@@ -7,6 +7,7 @@ class Player {
   final bool isHost;
   final bool isDealer;
   final bool isConnected;
+  final bool isReady;
   final int? bid;
   final int tricksWon;
   final List<GameCard> hand;
@@ -18,6 +19,7 @@ class Player {
     this.isHost = false,
     this.isDealer = false,
     this.isConnected = true,
+    this.isReady = false,
     this.bid,
     this.tricksWon = 0,
     this.hand = const [],
@@ -32,6 +34,7 @@ class Player {
     bool? isHost,
     bool? isDealer,
     bool? isConnected,
+    bool? isReady,
     int? bid,
     int? tricksWon,
     List<GameCard>? hand,
@@ -43,6 +46,7 @@ class Player {
       isHost: isHost ?? this.isHost,
       isDealer: isDealer ?? this.isDealer,
       isConnected: isConnected ?? this.isConnected,
+      isReady: isReady ?? this.isReady,
       bid: bid ?? this.bid,
       tricksWon: tricksWon ?? this.tricksWon,
       hand: hand ?? this.hand,
@@ -62,6 +66,7 @@ class Player {
       isHost: json['isHost'] ?? false,
       isDealer: json['isDealer'] ?? false,
       isConnected: json['isConnected'] ?? true,
+      isReady: json['isReady'] ?? false,
       bid: json['bid'],
       tricksWon: json['tricksWon'] ?? 0,
       hand: parsedHand,
@@ -76,6 +81,7 @@ class Player {
       'isHost': isHost,
       'isDealer': isDealer,
       'isConnected': isConnected,
+      'isReady': isReady,
       'bid': bid,
       'tricksWon': tricksWon,
       'hand': hand.map((c) => c.toJson()).toList(),

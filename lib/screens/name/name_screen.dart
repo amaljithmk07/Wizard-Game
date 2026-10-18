@@ -19,7 +19,9 @@ class _NameScreenState extends ConsumerState<NameScreen> {
   void initState() {
     super.initState();
     final initialName = ref.read(playerNameProvider);
-    _controller = TextEditingController(text: initialName);
+    _controller = TextEditingController(
+      text: initialName.toLowerCase() == 'amal' ? '' : initialName,
+    );
 
     // Initialize socket connection only if NOT in Demo Mode
     if (!AppConfig.isDemoMode) {
@@ -127,6 +129,12 @@ class _NameScreenState extends ConsumerState<NameScreen> {
                     fontWeight: FontWeight.w600,
                   ),
                   decoration: InputDecoration(
+                    hintText: 'Enter your name (e.g. Player 1)',
+                    hintStyle: const TextStyle(
+                      color: Color(0xFF94A3B8),
+                      fontSize: 16,
+                      fontWeight: FontWeight.normal,
+                    ),
                     contentPadding: const EdgeInsets.symmetric(
                         horizontal: 16, vertical: 14),
                     border: InputBorder.none,
