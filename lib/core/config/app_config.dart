@@ -10,9 +10,14 @@ class AppConfig {
     _serverUrl = url.trim();
   }
 
-  /// Demo/mock mode is disabled for real live multiplayer
-  static bool get isDemoMode => false;
+  static bool _demoMode = false;
+  static bool get isDemoMode => _demoMode;
 
-  static void enableRuntimeDemo() {}
-  static void resetRuntimeDemo() {}
+  static void enableRuntimeDemo() {
+    _demoMode = true;
+  }
+
+  static void resetRuntimeDemo() {
+    _demoMode = false;
+  }
 }

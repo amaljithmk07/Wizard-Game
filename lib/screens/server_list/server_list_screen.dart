@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/config/app_config.dart';
+import '../../core/demo/demo_game_engine.dart';
 import '../../core/network/local_game_server.dart';
 import '../../core/network/socket_service.dart';
+import '../../providers/player_provider.dart';
 import '../../providers/room_provider.dart';
 import '../../widgets/room_tile.dart';
 import '../create_room/create_room_screen.dart';
+import '../game/game_screen.dart';
 import '../lobby/room_lobby_screen.dart';
 
 class ServerListScreen extends ConsumerStatefulWidget {
@@ -43,6 +46,16 @@ class _ServerListScreenState extends ConsumerState<ServerListScreen> {
     Navigator.push(
       context,
       MaterialPageRoute(builder: (_) => const RoomLobbyScreen()),
+    );
+  }
+
+  void _startOfflineDemo() {
+    AppConfig.enableRuntimeDemo();
+    final name = ref.read(playerNameProvider);
+    DemoGameEngine().startDemo(ref: ref, playerName: name);
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const GameScreen()),
     );
   }
 
@@ -191,9 +204,9 @@ class _ServerListScreenState extends ConsumerState<ServerListScreen> {
                   return Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                     decoration: BoxDecoration(
-                      color: color.withOpacity(0.1),
+                      color: color.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(6),
-                      border: Border.all(color: color.withOpacity(0.3)),
+                      border: Border.all(color: color.withValues(alpha: 0.3)),
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
@@ -329,7 +342,34 @@ class _ServerListScreenState extends ConsumerState<ServerListScreen> {
                 ],
               ),
 
-              const SizedBox(height: 16),
+              const SizedBox(height: 10),
+
+              // Offline Practice / Demo Mode Button
+              SizedBox(
+                width: double.infinity,
+                height: 44,
+                child: OutlinedButton.icon(
+                  onPressed: _startOfflineDemo,
+                  icon: const Text('🧙‍♂️', style: TextStyle(fontSize: 18)),
+                  label: const Text(
+                    'Play Offline Practice (Demo Mode)',
+                    style: TextStyle(
+                      color: Color(0xFF7C3AED),
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    backgroundColor: const Color(0xFFFAF5FF),
+                    side: const BorderSide(color: Color(0xFFDDD6FE), width: 1.5),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: 14),
 
               // Rooms List
               Expanded(

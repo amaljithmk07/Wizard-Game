@@ -223,6 +223,10 @@ class CurrentRoomNotifier extends StateNotifier<GameRoom?> {
     SocketService().emit('start_game');
   }
 
+  void setRoomDirectly(GameRoom room) {
+    state = room;
+  }
+
   void updateDemoGameState({
     required List<Player> players,
     required GameStateModel gameState,

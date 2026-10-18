@@ -1,5 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../core/config/app_config.dart';
+import '../../core/demo/demo_game_engine.dart';
 import '../../core/network/socket_service.dart';
 import '../../models/game_card.dart';
 import '../../models/game_room.dart';
@@ -155,6 +157,10 @@ class GameNotifier extends StateNotifier<GameState> {
   }
 
   void submitBid(int bid) {
+    if (AppConfig.isDemoMode) {
+      DemoGameEngine().submitBid(bid);
+      return;
+    }
     SocketService().emit('submit_bid', {'bid': bid});
   }
 
@@ -168,6 +174,13 @@ class GameNotifier extends StateNotifier<GameState> {
       return;
     }
 
+    if (AppConfig.isDemoMode) {
+      final index = state.selectedCardIndex;
+      state = state.copyWith(selectedCardIndex: -1);
+      DemoGameEngine().playCard(index);
+      return;
+    }
+
     final card = state.myHand[state.selectedCardIndex];
     SocketService().emit('play_card', {
       'cardId': card.id,
@@ -175,6 +188,20 @@ class GameNotifier extends StateNotifier<GameState> {
     });
 
     state = state.copyWith(selectedCardIndex: -1);
+  }
+
+  void setDemoState({
+    required List<GameCard> myHand,
+    required bool isMyTurn,
+    required String turnPlayerName,
+  }) {
+    state = state.copyWith(
+      myHand: myHand,
+      isMyTurn: isMyTurn,
+      currentTurnPlayerName: turnPlayerName,
+      selectedCardIndex: -1,
+      errorMessage: null,
+    );
   }
 
   void resetGame() {

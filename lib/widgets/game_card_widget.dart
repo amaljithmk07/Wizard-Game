@@ -1,157 +1,135 @@
 import 'package:flutter/material.dart';
+import 'package:playing_cards/playing_cards.dart';
 import '../models/game_card.dart';
+import 'card_back_widget.dart';
+import 'jester_card_widget.dart';
+import 'playing_card_adapter.dart';
+import 'wizard_card_widget.dart';
 
 class GameCardWidget extends StatelessWidget {
   final GameCard? card;
   final bool isFaceDown;
   final bool isSelected;
+  final bool isPlayable;
   final VoidCallback? onTap;
   final double width;
   final double height;
+  final double elevation;
 
   const GameCardWidget({
     super.key,
     this.card,
     this.isFaceDown = false,
     this.isSelected = false,
+    this.isPlayable = true,
     this.onTap,
     this.width = 62,
-    this.height = 90,
+    this.height = 88,
+    this.elevation = 2.0,
   });
 
   @override
   Widget build(BuildContext context) {
     if (isFaceDown || card == null) {
-      return Container(
+      return CardBackWidget(
         width: width,
         height: height,
-        decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            colors: [Color(0xFF1E3A8A), Color(0xFF2563EB)],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: Colors.white, width: 2),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.12),
-              blurRadius: 4,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Center(
-          child: Container(
-            margin: const EdgeInsets.all(4),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(4),
-              border: Border.all(
-                color: Colors.white.withOpacity(0.35),
-                width: 1,
-              ),
-            ),
-            child: Center(
-              child: Icon(
-                Icons.auto_awesome_rounded,
-                color: Colors.white.withOpacity(0.75),
-                size: width * 0.35,
-              ),
-            ),
-          ),
-        ),
+        elevation: elevation,
       );
     }
 
-    final displayCard = card!;
-    final isWizard = displayCard.isWizard;
-    final isJester = displayCard.isJester;
+    final currentCard = card!;
+    final bool isWizard = currentCard.isWizard;
+    final bool isJester = currentCard.isJester;
+    final playingCard = PlayingCardAdapter.toPlayingCard(currentCard);
 
-    Color borderColor = const Color(0xFFE2E8F0);
-    Color cardBg = Colors.white;
-
-    if (isSelected) {
-      borderColor = const Color(0xFF2563EB);
-    } else if (isWizard) {
-      borderColor = const Color(0xFFA855F7); // Purple accent
-      cardBg = const Color(0xFFFAF5FF);
-    } else if (isJester) {
-      borderColor = const Color(0xFFF59E0B); // Amber accent
-      cardBg = const Color(0xFFFFFBEB);
-    }
-
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 150),
+    Widget cardFace;
+    if (isWizard) {
+      cardFace = WizardCardWidget(
         width: width,
         height: height,
-        margin: EdgeInsets.only(bottom: isSelected ? 10 : 0),
-        padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 5),
-        decoration: BoxDecoration(
-          color: cardBg,
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(
-            color: borderColor,
-            width: isSelected ? 2.5 : (isWizard || isJester ? 1.8 : 1.2),
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: isSelected
-                  ? const Color(0xFF2563EB).withOpacity(0.3)
-                  : (isWizard
-                      ? const Color(0xFF7C3AED).withOpacity(0.15)
-                      : Colors.black.withOpacity(0.06)),
-              blurRadius: isSelected ? 8 : 4,
-              offset: Offset(0, isSelected ? 4 : 2),
-            ),
-          ],
+        elevation: isSelected ? elevation + 2 : elevation,
+      );
+    } else if (isJester) {
+      cardFace = JesterCardWidget(
+        width: width,
+        height: height,
+        elevation: isSelected ? elevation + 2 : elevation,
+      );
+    } else if (playingCard != null) {
+      cardFace = SizedBox(
+        width: width,
+        height: height,
+        child: PlayingCardView(
+          card: playingCard,
+          showBack: false,
+          elevation: isSelected ? elevation + 2 : elevation,
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            // Value top left
-            Text(
-              displayCard.displayValue,
-              style: TextStyle(
-                color: displayCard.suitColor,
-                fontSize: width * 0.25,
-                fontWeight: FontWeight.w800,
-                height: 1.0,
-              ),
-            ),
-            // Suit symbol or character center
-            Align(
-              alignment: Alignment.center,
-              child: Text(
-                displayCard.suitSymbol,
-                style: TextStyle(
-                  color: displayCard.suitColor,
-                  fontSize: (isWizard || isJester) ? width * 0.44 : width * 0.40,
-                  height: 1.0,
+      );
+    } else {
+      cardFace = CardBackWidget(
+        width: width,
+        height: height,
+        elevation: elevation,
+      );
+    }
+
+    // Apply selection highlight ring and playable/disabled opacity
+    final content = AnimatedContainer(
+      duration: const Duration(milliseconds: 180),
+      curve: Curves.easeOutCubic,
+      transform: Matrix4.translationValues(0, isSelected ? -14 : 0, 0),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(8),
+        boxShadow: isSelected
+            ? [
+                BoxShadow(
+                  color: const Color(0xFF2563EB).withValues(alpha: 0.45),
+                  blurRadius: 10,
+                  spreadRadius: 2,
+                  offset: const Offset(0, 4),
+                )
+              ]
+            : null,
+      ),
+      child: Stack(
+        children: [
+          cardFace,
+
+          // If not playable, visually dim and disable
+          if (!isPlayable)
+            Positioned.fill(
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.40),
+                  borderRadius: BorderRadius.circular(6),
                 ),
               ),
             ),
-            // Label bottom right for Wizard/Jester
-            if (isWizard || isJester)
-              Align(
-                alignment: Alignment.bottomRight,
-                child: Text(
-                  isWizard ? 'WIZ' : 'JEST',
-                  style: TextStyle(
-                    color: displayCard.suitColor,
-                    fontSize: width * 0.16,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: -0.5,
+
+          // Selection border highlight
+          if (isSelected)
+            Positioned.fill(
+              child: IgnorePointer(
+                child: Container(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(
+                      color: const Color(0xFF2563EB),
+                      width: 2.2,
+                    ),
                   ),
                 ),
-              )
-            else
-              const SizedBox(height: 2),
-          ],
-        ),
+              ),
+            ),
+        ],
       ),
+    );
+
+    return GestureDetector(
+      onTap: isPlayable ? onTap : null,
+      behavior: HitTestBehavior.opaque,
+      child: content,
     );
   }
 }

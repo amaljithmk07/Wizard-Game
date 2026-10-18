@@ -52,9 +52,9 @@ class _CreateRoomScreenState extends ConsumerState<CreateRoomScreen> {
               color: Color(0xFF0F172A), size: 20),
           onPressed: () => Navigator.pop(context),
         ),
-        title: Row(
+        title: const Row(
           children: [
-            const Text(
+            Text(
               'Create Room',
               style: TextStyle(
                 color: Color(0xFF0F172A),

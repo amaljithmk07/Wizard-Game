@@ -23,6 +23,8 @@ class Player {
     this.hand = const [],
   });
 
+  int get handCount => hand.length;
+
   Player copyWith({
     String? id,
     String? name,
