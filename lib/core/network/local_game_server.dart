@@ -81,7 +81,7 @@ class LocalGameServer {
     }
 
     final roomId =
-        'local_room_${DateTime.now().millisecondsSinceEpoch % 10000}';
+        'WZ${1000 + (DateTime.now().millisecondsSinceEpoch % 9000)}';
     final hostPlayer = Player(
       id: 'player_host',
       name: hostPlayerName.isNotEmpty ? hostPlayerName : 'Host',

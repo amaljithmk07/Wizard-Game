@@ -42,41 +42,38 @@ class RoomTile extends StatelessWidget {
                         ),
                       ),
                     ),
-                    if (room.isLocalLan) ...[
-                      const SizedBox(width: 6),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 6, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFEFF6FF),
-                          borderRadius: BorderRadius.circular(4),
-                          border: Border.all(color: const Color(0xFFBFDBFE)),
-                        ),
-                        child: const Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(Icons.wifi,
-                                size: 11, color: Color(0xFF2563EB)),
-                            SizedBox(width: 3),
-                            Text(
-                              'Wi-Fi',
-                              style: TextStyle(
-                                color: Color(0xFF1D4ED8),
-                                fontSize: 10,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                          ],
-                        ),
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 7, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF1F5F9),
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(color: const Color(0xFFCBD5E1)),
                       ),
-                    ],
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.vpn_key_rounded,
+                              size: 11, color: Color(0xFF64748B)),
+                          const SizedBox(width: 4),
+                          Text(
+                            room.id,
+                            style: const TextStyle(
+                              color: Color(0xFF334155),
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   ],
                 ),
-                const SizedBox(height: 2),
+                const SizedBox(height: 4),
                 Text(
-                  room.isLocalLan
-                      ? '${room.playerCount} / ${room.maxPlayers} players • ${room.hostAddress}'
-                      : '${room.playerCount} / ${room.maxPlayers} players',
+                  '${room.playerCount} / ${room.maxPlayers} players',
                   style: const TextStyle(
                     color: Color(0xFF64748B),
                     fontSize: 13,

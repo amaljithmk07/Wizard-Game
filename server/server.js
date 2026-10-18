@@ -74,7 +74,10 @@ function sanitize(str, maxLen = NAME_MAX_LEN) {
 
 function newRoomId() {
   let id;
-  do { id = 'room_' + Math.random().toString(36).substring(2, 8).toUpperCase(); } while (rooms[id]);
+  do {
+    // Generate clean 6-character room code, e.g. "WZ8421"
+    id = 'WZ' + Math.floor(1000 + Math.random() * 9000);
+  } while (rooms[id]);
   return id;
 }
 
@@ -257,9 +260,22 @@ function handleEvent(ws, ci, event, data) {
     }
 
     case 'join_room': {
-      const roomId = data?.roomId;
-      const room = rooms[roomId];
-      if (!room) return sendTo(ws, 'error', { message: 'Room does not exist.' });
+      const rawId = data?.roomId ? String(data.roomId).trim() : '';
+      if (!rawId) return sendTo(ws, 'error', { message: 'Please enter a Room Code.' });
+
+      // Match exact, uppercase, or fuzzy (ignoring prefixes like "room_", dashes, spaces)
+      let room = rooms[rawId] || rooms[rawId.toUpperCase()];
+      if (!room) {
+        const clean = rawId.toUpperCase().replace(/^ROOM[_-]?/, '').replace(/[^A-Z0-9]/g, '');
+        const matchKey = Object.keys(rooms).find(k => {
+          const kClean = k.toUpperCase().replace(/^ROOM[_-]?/, '').replace(/[^A-Z0-9]/g, '');
+          return kClean === clean || k.toUpperCase() === rawId.toUpperCase();
+        });
+        if (matchKey) room = rooms[matchKey];
+      }
+
+      if (!room) return sendTo(ws, 'error', { message: `Room "${rawId}" not found. Please check the code.` });
+      const roomId = room.id;
       const pName = sanitize(data?.playerName || ci.name) || ci.name;
       ci.name = pName;
       const existing = room.players.find(p => p.id === ci.id || (room.status === 'PLAYING' && p.name === pName));

@@ -78,6 +78,8 @@ class RoomsNotifier extends StateNotifier<List<GameRoom>> {
   }
 }
 
+final roomErrorMessageProvider = StateProvider<String?>((ref) => null);
+
 final currentRoomProvider =
     StateNotifierProvider<CurrentRoomNotifier, GameRoom?>((ref) {
   return CurrentRoomNotifier(ref);
@@ -112,6 +114,13 @@ class CurrentRoomNotifier extends StateNotifier<GameRoom?> {
     socket.on('room_updated', (data) {
       if (data is Map) {
         state = GameRoom.fromJson(Map<String, dynamic>.from(data));
+      }
+    });
+
+    socket.on('error', (data) {
+      if (data is Map && data['message'] != null) {
+        _ref.read(roomErrorMessageProvider.notifier).state =
+            data['message'].toString();
       }
     });
   }
@@ -169,12 +178,14 @@ class CurrentRoomNotifier extends StateNotifier<GameRoom?> {
   }
 
   Future<void> joinRoom(String roomId, {String? hostAddress}) async {
+    _ref.read(roomErrorMessageProvider.notifier).state = null;
     final playerName = _ref.read(playerNameProvider);
+    final cleanRoomId = roomId.trim();
 
-    // Check if room has a host address on Wi-Fi (e.g. 192.168.1.15:8080)
+    // Check if room has a host address on Wi-Fi (e.g. local host fallback)
     final allRooms = _ref.read(roomsProvider);
     final targetRoom = allRooms.cast<GameRoom?>().firstWhere(
-          (r) => r?.id == roomId,
+          (r) => r?.id == cleanRoomId,
           orElse: () => null,
         );
 
@@ -185,8 +196,12 @@ class CurrentRoomNotifier extends StateNotifier<GameRoom?> {
       await SocketService().connect();
     }
 
+    if (SocketService().isConnected) {
+      SocketService().emit('set_player_name', {'name': playerName});
+    }
+
     SocketService().emit('join_room', {
-      'roomId': roomId,
+      'roomId': cleanRoomId,
       'playerName': playerName,
     });
   }

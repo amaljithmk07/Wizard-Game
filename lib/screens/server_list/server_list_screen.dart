@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/config/app_config.dart';
 import '../../core/demo/demo_game_engine.dart';
-import '../../core/network/local_game_server.dart';
 import '../../core/network/socket_service.dart';
 import '../../providers/player_provider.dart';
 import '../../providers/room_provider.dart';
@@ -19,22 +18,12 @@ class ServerListScreen extends ConsumerStatefulWidget {
 }
 
 class _ServerListScreenState extends ConsumerState<ServerListScreen> {
-  String? _myLocalIp;
-
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _loadRooms();
-      _fetchMyIp();
     });
-  }
-
-  void _fetchMyIp() async {
-    final ip = await LocalGameServer().findLocalIp();
-    if (mounted) {
-      setState(() => _myLocalIp = ip);
-    }
   }
 
   void _loadRooms() {
@@ -59,52 +48,109 @@ class _ServerListScreenState extends ConsumerState<ServerListScreen> {
     );
   }
 
-  void _showJoinByIpDialog() {
+  void _showJoinByRoomIdDialog() {
     final controller = TextEditingController();
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Connect by Host IP'),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Row(
+          children: [
+            Icon(Icons.vpn_key_rounded, color: Color(0xFF2563EB), size: 22),
+            SizedBox(width: 8),
+            Text(
+              'Join with Room Code',
+              style: TextStyle(
+                fontWeight: FontWeight.w700,
+                fontSize: 18,
+                color: Color(0xFF0F172A),
+              ),
+            ),
+          ],
+        ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
-              'Enter the Host\'s Wi-Fi IP address shown on their screen:',
+              'Enter the Room Code shared by the host to join their game:',
               style: TextStyle(fontSize: 13, color: Color(0xFF64748B)),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 14),
             TextField(
               controller: controller,
+              textCapitalization: TextCapitalization.characters,
+              autocorrect: false,
+              style: const TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 2.0,
+                color: Color(0xFF0F172A),
+              ),
               decoration: InputDecoration(
-                hintText: 'e.g. 192.168.1.15:8080',
-                border:
-                    OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                hintText: 'e.g. WZ4821',
+                hintStyle: TextStyle(
+                  fontSize: 14,
+                  letterSpacing: 1.0,
+                  color: Colors.grey.shade400,
+                  fontWeight: FontWeight.normal,
+                ),
+                prefixIcon: const Icon(Icons.tag_rounded, color: Color(0xFF2563EB)),
+                filled: true,
+                fillColor: const Color(0xFFF8FAFC),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: Color(0xFFCBD5E1)),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide:
+                      const BorderSide(color: Color(0xFF2563EB), width: 2),
+                ),
                 contentPadding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
               ),
               autofocus: true,
+              onSubmitted: (_) {
+                final code = controller.text.trim();
+                if (code.isNotEmpty) {
+                  Navigator.pop(ctx);
+                  _joinRoom(code);
+                }
+              },
             ),
           ],
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancel'),
+            child: const Text('Cancel',
+                style: TextStyle(color: Color(0xFF64748B))),
           ),
           ElevatedButton(
             onPressed: () {
-              final text = controller.text.trim();
-              if (text.isNotEmpty) {
+              final code = controller.text.trim();
+              if (code.isNotEmpty) {
                 Navigator.pop(ctx);
-                ref.read(currentRoomProvider.notifier).connectByIp(text);
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const RoomLobbyScreen()),
-                );
+                _joinRoom(code);
               }
             },
-            child: const Text('Connect'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF2563EB),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10)),
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+            ),
+            child: const Text(
+              'Join Room',
+              style:
+                  TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+            ),
           ),
         ],
       ),
@@ -257,38 +303,6 @@ class _ServerListScreenState extends ConsumerState<ServerListScreen> {
           padding: const EdgeInsets.symmetric(horizontal: 20),
           child: Column(
             children: [
-              // Wi-Fi Info Banner
-              if (_myLocalIp != null) ...[
-                Container(
-                  width: double.infinity,
-                  margin: const EdgeInsets.only(bottom: 12),
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF1F5F9),
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: const Color(0xFFE2E8F0)),
-                  ),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.network_check_rounded,
-                          size: 18, color: Color(0xFF475569)),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          'Your Wi-Fi IP: $_myLocalIp (Local multiplayer active)',
-                          style: const TextStyle(
-                            color: Color(0xFF334155),
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-
               // Action Buttons Row
               Row(
                 children: [
@@ -327,9 +341,9 @@ class _ServerListScreenState extends ConsumerState<ServerListScreen> {
                   SizedBox(
                     height: 48,
                     child: OutlinedButton.icon(
-                      onPressed: _showJoinByIpDialog,
-                      icon: const Icon(Icons.link, size: 18),
-                      label: const Text('Join by IP'),
+                      onPressed: _showJoinByRoomIdDialog,
+                      icon: const Icon(Icons.vpn_key_rounded, size: 18),
+                      label: const Text('Join with Code'),
                       style: OutlinedButton.styleFrom(
                         foregroundColor: const Color(0xFF2563EB),
                         side: const BorderSide(color: Color(0xFFBFDBFE)),
